@@ -40,7 +40,7 @@ def classify_file(filepath: str, policy: dict | None = None) -> tuple[str, str |
             if fnmatch.fnmatch(filepath, pat):
                 return level, pat
 
-    return "leaf", None
+    return "branch", None
 
 
 def classify_files(files: list[str], policy: dict | None = None) -> tuple[str, list[tuple[str, str, str | None]]]:
@@ -93,6 +93,10 @@ _BUILTIN_PATTERNS = {
         "internal/infrastructure/*",
         "cmd/*",
         "api/*",
+        "src/*",
+        "app/*",
+        "lib/*",
+        "packages/*",
     ],
     "leaf": [
         "docs/*", "*.md", "*.txt",

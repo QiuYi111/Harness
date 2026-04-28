@@ -69,6 +69,12 @@ risk_levels:
       - name: api
         patterns:
           - "api/*"
+      - name: common_source
+        patterns:
+          - "src/*"
+          - "app/*"
+          - "lib/*"
+          - "packages/*"
     required_gates:
       - spec
       - plan
