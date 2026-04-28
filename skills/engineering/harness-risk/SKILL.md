@@ -27,7 +27,8 @@ Read before starting:
 ### Option A: Deterministic Classifier (Preferred)
 
 ```bash
-harness classify-risk --diff=<path-to-diff-or-plan>
+harness classify-risk --base=main          # diff against main
+harness classify-risk --base=HEAD~3       # diff against 3 commits ago
 ```
 
 Returns: risk level, affected files, required gates, HITL required (boolean).

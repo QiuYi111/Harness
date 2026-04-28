@@ -28,6 +28,9 @@ case "$AGENT" in
   cursor)
     TARGET_DIR="${TARGET_DIR:-$HOME/.cursor/skills/harness}"
     ;;
+  windsurf)
+    TARGET_DIR="${TARGET_DIR:-$HOME/.windsurf/skills/harness}"
+    ;;
   *)
     echo "Unknown agent: $AGENT"
     echo "Supported: claude-code, codex, cursor, windsurf"

@@ -66,10 +66,10 @@ Return to Step 1 with the next vertical slice from `tasks.md`.
 `harness verify-ai` enforces role boundaries at the file level. Run after each commit:
 
 ```bash
-harness verify-ai --role=TDD-RED --diff=HEAD~1      # after RED
-harness verify-ai --role=TDD-GREEN --diff=HEAD~1     # after GREEN
-harness verify-ai --role=TDD-REFACTOR --diff=HEAD~1  # after REFACTOR
-harness verify-ai --role=REVIEWER --full              # after REVIEWER
+harness verify-ai --role TDD-RED --base HEAD~1      # after RED
+harness verify-ai --role TDD-GREEN --base HEAD~1     # after GREEN
+harness verify-ai --role TDD-REFACTOR --base HEAD~1  # after REFACTOR
+harness verify-ai --role REVIEWER                     # after REVIEWER
 ```
 
 Boundary violations invalidate the commit. Redo within the correct role.

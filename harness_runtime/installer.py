@@ -5,6 +5,7 @@ AGENT_TARGETS = {
     "claude-code": "~/.claude/skills/harness",
     "codex": "~/.codex/skills/harness",
     "cursor": "~/.cursor/skills/harness",
+    "windsurf": "~/.windsurf/skills/harness",
 }
 
 SKILL_BUCKETS = ["engineering", "productivity", "misc"]

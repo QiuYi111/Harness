@@ -167,13 +167,13 @@ func (o *Order) Submit() error {
 
 ## `harness verify-ai` Results
 ```
-$ harness verify-ai --role=TDD-RED --diff=HEAD~4
+$ harness verify-ai --role TDD-RED --base HEAD~4
 PASS: Only test and spec files modified
-$ harness verify-ai --role=TDD-GREEN --diff=HEAD~3
+$ harness verify-ai --role TDD-GREEN --base HEAD~3
 PASS: No test files modified
-$ harness verify-ai --role=TDD-REFACTOR --diff=HEAD~1
+$ harness verify-ai --role TDD-REFACTOR --base HEAD~1
 PASS: No test files modified, no new public symbols
-$ harness verify-ai --role=REVIEWER --full
+$ harness verify-ai --role REVIEWER
 PASS: Report only, no source modifications
 ```
 ```
@@ -237,7 +237,7 @@ def create_order(order_service):
 ### Violation: RED Agent Writes Implementation
 
 ```bash
-$ harness verify-ai --role=TDD-RED --diff=HEAD~1
+$ harness verify-ai --role TDD-RED --base HEAD~1
 ERROR: Role boundary violation
   Role: TDD-RED
   Forbidden files modified:
@@ -248,7 +248,7 @@ ERROR: Role boundary violation
 ### Violation: GREEN Agent Modifies Tests
 
 ```bash
-$ harness verify-ai --role=TDD-GREEN --diff=HEAD~1
+$ harness verify-ai --role TDD-GREEN --base HEAD~1
 ERROR: Role boundary violation
   Role: TDD-GREEN
   Forbidden files modified:

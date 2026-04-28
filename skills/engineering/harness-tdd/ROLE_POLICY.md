@@ -73,7 +73,7 @@ When `harness verify-ai` detects a violation:
 
 Example violation:
 ```
-harness verify-ai --role=TDD-GREEN --diff=HEAD~1
+harness verify-ai --role TDD-GREEN --base HEAD~1
 ERROR: Role boundary violation
   Role: TDD-GREEN
   Forbidden files modified:

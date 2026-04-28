@@ -5,35 +5,20 @@ from pathlib import Path
 import click
 
 from . import __version__
-from .risk import classify_files, get_gates, RISK_PRIORITY
+from .risk import classify_files, get_gates, load_blast_policy
 from .verify import run_full_verify, check_role_boundaries
 from .evals import run_eval
-from .context import build_context, format_context
+from .context import build_context, format_context, write_context
 from .installer import install_skills
 
-HARNESS_ROOT = Path(__file__).resolve().parent.parent
-TEMPLATES_DIR = HARNESS_ROOT / "templates"
-RESOURCES_DIR = HARNESS_ROOT / "resources"
+DIST_ROOT = Path(__file__).resolve().parent.parent
+RESOURCES_DIR = DIST_ROOT / "resources"
 POLICIES_DIR = RESOURCES_DIR / "policies"
-SPECS_DIR = HARNESS_ROOT / "specs"
+TEMPLATES_DIR = RESOURCES_DIR / "templates"
+SKILLS_DIR = DIST_ROOT / "skills"
+PLUGIN_PATH = DIST_ROOT / ".claude-plugin" / "plugin.json"
 
 ICONS = {"pass": "✅", "fail": "❌", "warn": "⚠️ "}
-
-
-def _git_diff_files() -> list[str]:
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.returncode != 0:
-            result = subprocess.run(
-                ["git", "diff", "--name-only"],
-                capture_output=True, text=True, timeout=10,
-            )
-        return [f for f in result.stdout.strip().splitlines() if f]
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        return []
 
 
 def _git_root() -> Path:
@@ -49,6 +34,27 @@ def _git_root() -> Path:
     return Path.cwd()
 
 
+def _git_diff_files(base: str | None = None) -> list[str]:
+    try:
+        if base:
+            cmd = ["git", "diff", "--name-only", base]
+        else:
+            cmd = ["git", "diff", "--name-only", "HEAD"]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if result.returncode != 0 and not base:
+            result = subprocess.run(
+                ["git", "diff", "--name-only"],
+                capture_output=True, text=True, timeout=10,
+            )
+        return [f for f in result.stdout.strip().splitlines() if f]
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return []
+
+
+def _project_specs_dir(project_root: Path | None = None) -> Path:
+    return (project_root or _git_root()) / "specs"
+
+
 @click.group()
 @click.version_option(__version__, prog_name="harness")
 def main():
@@ -56,13 +62,19 @@ def main():
 
 
 @main.command()
-def init():
-    click.echo("Initializing Harness project...")
-    click.echo(f"  Root: {HARNESS_ROOT}")
+@click.argument("target", required=False, default=".")
+def init(target):
+    project_root = Path(target).resolve()
+    if str(project_root) == str(DIST_ROOT.resolve()):
+        click.echo("Error: target is Harness itself. Run from a project directory.", err=True)
+        raise SystemExit(1)
 
-    dirs_to_create = ["specs", "docs", "scripts"]
+    click.echo("Initializing Harness project...")
+    click.echo(f"  Project root: {project_root}")
+
+    dirs_to_create = ["specs", ".harness"]
     for d in dirs_to_create:
-        path = HARNESS_ROOT / d
+        path = project_root / d
         path.mkdir(exist_ok=True)
         click.echo(f"  ✓ {d}/")
 
@@ -72,24 +84,25 @@ def init():
     ]
     for t in templates_to_copy:
         src = TEMPLATES_DIR / t
-        dst = HARNESS_ROOT / t
+        dst = project_root / t
         if src.exists() and not dst.exists():
             shutil.copy2(src, dst)
             click.echo(f"  ✓ copied {t}")
         elif dst.exists():
             click.echo(f"  ↻ {t} already exists")
         else:
-            click.echo(f"  ⚠ template {t} not found")
+            click.echo(f"  ⚠ template {t} not found at {src}")
 
-    install_skills(HARNESS_ROOT)
+    install_skills(DIST_ROOT)
     click.echo("\nDone. Run 'harness status' to verify.")
 
 
 @main.command("install-skills")
-@click.option("--agent", default="claude-code", help="Target agent (claude-code, codex, cursor)")
+@click.option("--agent", default="claude-code",
+              help="Target agent (claude-code, codex, cursor, windsurf)")
 @click.option("--target", default=None, help="Override target directory")
 def install_skills_cmd(agent, target):
-    result = install_skills(HARNESS_ROOT, agent, target)
+    result = install_skills(DIST_ROOT, agent, target)
     if "error" in result:
         click.echo(f"Error: {result['error']}", err=True)
         raise SystemExit(1)
@@ -109,8 +122,12 @@ def install_skills_cmd(agent, target):
 
 @main.command()
 @click.argument("feature_id")
-def specify(feature_id):
-    feature_dir = SPECS_DIR / feature_id
+@click.option("--target", default=None, help="Project root (default: git root or cwd)")
+def specify(feature_id, target):
+    project_root = Path(target).resolve() if target else _git_root()
+    specs_dir = project_root / "specs"
+    feature_dir = specs_dir / feature_id
+
     if feature_dir.exists():
         click.echo(f"specs/{feature_id}/ already exists.")
         raise SystemExit(1)
@@ -133,15 +150,17 @@ def specify(feature_id):
             click.echo(f"  ✓ {artifact_name}")
         else:
             dst.touch()
-            click.echo(f"  ⚠ {artifact_name} (empty, template not found)")
+            click.echo(f"  ⚠ {artifact_name} (empty, template not found at {src})")
 
     click.echo(f"\nCreated specs/{feature_id}/ — fill in the templates.")
 
 
 @main.command("classify-risk")
+@click.option("--base", default=None, help="Git base ref (e.g. 'main', 'HEAD~1')")
 @click.option("--role", default="", help="Check role boundaries for TDD-RED/GREEN/REFACTOR/REVIEWER")
-def classify_risk(role):
-    files = _git_diff_files()
+def classify_risk(base, role):
+    policy = load_blast_policy()
+    files = _git_diff_files(base)
     if not files:
         click.echo("No changed files detected.")
         click.echo("Overall risk: leaf")
@@ -149,13 +168,14 @@ def classify_risk(role):
 
     click.echo("Analyzing changed files for blast radius...\n")
 
-    risk, results = classify_files(files)
-    for filepath, file_risk in results:
-        click.echo(f"  {filepath} → {file_risk}")
+    risk, results = classify_files(files, policy)
+    for filepath, file_risk, pattern in results:
+        pattern_str = f" (matched '{pattern}')" if pattern else ""
+        click.echo(f"  {filepath} → {file_risk}{pattern_str}")
 
     click.echo(f"\nOverall risk: {risk}")
 
-    gates = get_gates(risk, POLICIES_DIR / "gates.yaml")
+    gates = get_gates(risk, policy)
     click.echo("\nRequired gates:")
     for g in gates:
         click.echo(f"  - {g}")
@@ -171,26 +191,24 @@ def classify_risk(role):
 
 
 @main.command("verify-ai")
+@click.option("--base", default=None, help="Git base ref for role boundary check")
 @click.option("--role", default="", help="Also check role boundaries")
-def verify_ai(role):
-    templates = TEMPLATES_DIR
-    specs = SPECS_DIR
-
-    if not _git_root().exists():
-        pass
-
-    git_root = _git_root()
-    if git_root != HARNESS_ROOT:
-        alt_templates = git_root / "templates"
-        alt_specs = git_root / "specs"
-        if alt_templates.exists():
-            templates = alt_templates
-        if alt_specs.exists():
-            specs = alt_specs
-
-    report = run_full_verify(templates, specs)
+@click.option("--project", default=None, help="Project root for specs/ check")
+def verify_ai(base, role, project):
+    project_root = Path(project).resolve() if project else _git_root()
+    specs_dir = project_root / "specs"
 
     click.echo("=== Harness AI Verification ===\n")
+    click.echo("Skill-pack integrity checks:\n")
+
+    report = run_full_verify(
+        skills_dir=SKILLS_DIR,
+        plugin_path=PLUGIN_PATH,
+        policies_dir=POLICIES_DIR,
+        templates_dir=TEMPLATES_DIR,
+        specs_dir=specs_dir,
+        project_root=project_root,
+    )
 
     for status, label, detail in report["results"]:
         icon = ICONS.get(status, "?")
@@ -202,7 +220,7 @@ def verify_ai(role):
     click.echo(f"  ⚠️  {report['warnings']} warnings")
 
     if role:
-        files = _git_diff_files()
+        files = _git_diff_files(base)
         violations = check_role_boundaries(files, role)
         if violations:
             click.echo(f"\nRole boundary violations ({role}):")
@@ -218,15 +236,12 @@ def verify_ai(role):
 
 @main.command("eval")
 @click.argument("feature_id")
-def eval_cmd(feature_id):
-    spec_dir = SPECS_DIR / feature_id
-    git_root = _git_root()
-    if git_root != HARNESS_ROOT:
-        alt = git_root / "specs" / feature_id
-        if alt.exists():
-            spec_dir = alt
+@click.option("--project", default=None, help="Project root")
+def eval_cmd(feature_id, project):
+    project_root = Path(project).resolve() if project else _git_root()
+    spec_dir = project_root / "specs" / feature_id
 
-    result = run_eval(spec_dir, git_root)
+    result = run_eval(spec_dir, project_root, POLICIES_DIR / "gates.yaml")
 
     if "error" in result:
         click.echo(f"Error: {result['error']}", err=True)
@@ -246,50 +261,58 @@ def eval_cmd(feature_id):
 
 @main.command()
 @click.argument("feature_id")
-def context(feature_id):
-    spec_dir = SPECS_DIR / feature_id
-    git_root = _git_root()
-    if git_root != HARNESS_ROOT:
-        alt = git_root / "specs" / feature_id
-        if alt.exists():
-            spec_dir = alt
+@click.option("--write", is_flag=True, default=False, help="Write context.md to specs/ dir")
+@click.option("--project", default=None, help="Project root")
+def context(feature_id, write, project):
+    project_root = Path(project).resolve() if project else _git_root()
+    spec_dir = project_root / "specs" / feature_id
 
-    ctx = build_context(spec_dir)
-    click.echo(format_context(ctx))
+    ctx = build_context(
+        spec_dir,
+        skills_dir=SKILLS_DIR,
+        policies_dir=POLICIES_DIR,
+        project_root=project_root,
+    )
+
+    if write:
+        output = spec_dir / "context.md"
+        write_context(ctx, output)
+        click.echo(f"Wrote {output}")
+    else:
+        click.echo(format_context(ctx))
 
 
 @main.command()
 @click.argument("feature_id")
-def report(feature_id):
-    spec_dir = SPECS_DIR / feature_id
-    git_root = _git_root()
-    if git_root != HARNESS_ROOT:
-        alt = git_root / "specs" / feature_id
-        if alt.exists():
-            spec_dir = alt
+@click.option("--project", default=None, help="Project root")
+@click.option("--base", default=None, help="Git base ref for risk classification")
+def report(feature_id, project, base):
+    project_root = Path(project).resolve() if project else _git_root()
+    spec_dir = project_root / "specs" / feature_id
 
     if not spec_dir.exists():
         click.echo(f"Error: specs/{feature_id}/ not found.", err=True)
         raise SystemExit(1)
 
+    policy = load_blast_policy()
     click.echo(f"=== Report: {feature_id} ===\n")
 
-    changed = _git_diff_files()
+    changed = _git_diff_files(base)
     if changed:
-        risk, results = classify_files(changed)
+        risk, results = classify_files(changed, policy)
         click.echo(f"Blast radius: {risk}")
         click.echo(f"Changed files ({len(changed)}):")
-        for f, r in results:
+        for f, r, _ in results:
             click.echo(f"  {f} ({r})")
     else:
         risk = "leaf"
         click.echo("No uncommitted changes.")
         click.echo("Blast radius: leaf")
 
-    gates = get_gates(risk, POLICIES_DIR / "gates.yaml")
+    gates = get_gates(risk, policy)
     click.echo(f"\nRequired gates: {', '.join(gates)}")
 
-    eval_result = run_eval(spec_dir, git_root)
+    eval_result = run_eval(spec_dir, project_root, POLICIES_DIR / "gates.yaml")
     click.echo(f"\nEval results:")
     for status, label in eval_result.get("results", []):
         icon = ICONS.get(status, "?")
@@ -300,25 +323,22 @@ def report(feature_id):
 
 
 @main.command()
-def status():
+@click.option("--project", default=None, help="Project root")
+def status(project):
+    project_root = Path(project).resolve() if project else _git_root()
+
     click.echo("=== Harness Status ===\n")
     click.echo(f"Version: {__version__}")
-    click.echo(f"Root: {HARNESS_ROOT}")
+    click.echo(f"Harness dist: {DIST_ROOT}")
+    click.echo(f"Project root: {project_root}")
 
-    git_root = _git_root()
-    click.echo(f"Git root: {git_root}")
-
-    templates_dir = TEMPLATES_DIR
-    if (git_root / "templates").exists():
-        templates_dir = git_root / "templates"
-    specs_dir = SPECS_DIR
-    if (git_root / "specs").exists():
-        specs_dir = git_root / "specs"
+    specs_dir = project_root / "specs"
 
     changed = _git_diff_files()
     if changed:
-        risk, _ = classify_files(changed)
-        gates = get_gates(risk, POLICIES_DIR / "gates.yaml")
+        policy = load_blast_policy()
+        risk, _ = classify_files(changed, policy)
+        gates = get_gates(risk, policy)
         click.echo(f"\nActive changes: {len(changed)} files")
         click.echo(f"Blast radius: {risk}")
         click.echo(f"Gates: {', '.join(gates)}")

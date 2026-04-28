@@ -1,3 +1,4 @@
+import yaml
 from pathlib import Path
 
 SPEC_ARTIFACTS = ["spec.md", "plan.md", "tasks.md", "eval.md", "report.md"]
@@ -53,7 +54,50 @@ def check_artifact_consistency(spec_dir: Path) -> list[tuple[str, str]]:
     return results
 
 
-def run_eval(spec_dir: Path, project_root: Path) -> dict:
+def check_gates(spec_dir: Path, gates_path: Path | None = None) -> list[tuple[str, str]]:
+    if gates_path is None:
+        gates_path = Path(__file__).resolve().parent.parent / "resources" / "policies" / "gates.yaml"
+
+    results = []
+    if not gates_path.exists():
+        results.append(("warn", "gates.yaml not found — skipping gate checks"))
+        return results
+
+    gates_data = yaml.safe_load(gates_path.read_text())
+    gates = gates_data.get("gates", {})
+
+    for gate_name, gate_def in gates.items():
+        check_str = gate_def.get("check", "")
+        if not check_str or "{feature}" not in check_str:
+            continue
+
+        feature_id = spec_dir.name
+        resolved = check_str.replace("{feature}", feature_id)
+
+        if "exists" in resolved:
+            file_path_str = resolved.split(" exists")[0].strip()
+            file_path = spec_dir / Path(file_path_str).name
+            if file_path.exists():
+                results.append(("pass", f"gate:{gate_name}", f"exists: {file_path.name}"))
+            else:
+                results.append(("fail", f"gate:{gate_name}", f"missing: {file_path.name}"))
+        elif "contains" in resolved:
+            candidate = resolved.split(" contains")[0].strip()
+            candidate_path = spec_dir / Path(candidate).name
+            section = resolved.split(" contains ")[1].strip()
+            if candidate_path.exists():
+                content = candidate_path.read_text(errors="replace").lower()
+                if section.lower() in content:
+                    results.append(("pass", f"gate:{gate_name}", f"contains '{section}'"))
+                else:
+                    results.append(("warn", f"gate:{gate_name}", f"missing '{section}' section"))
+            else:
+                results.append(("warn", f"gate:{gate_name}", f"file not found: {candidate}"))
+
+    return results
+
+
+def run_eval(spec_dir: Path, project_root: Path, gates_path: Path | None = None) -> dict:
     if not spec_dir.exists():
         return {"error": f"spec directory not found: {spec_dir}", "ok": False}
 
@@ -61,6 +105,7 @@ def run_eval(spec_dir: Path, project_root: Path) -> dict:
     all_results.extend(check_spec_completeness(spec_dir))
     all_results.extend(check_test_coverage(spec_dir, project_root))
     all_results.extend(check_artifact_consistency(spec_dir))
+    all_results.extend(check_gates(spec_dir, gates_path))
 
     passed = sum(1 for r in all_results if r[0] == "pass")
     failed = sum(1 for r in all_results if r[0] == "fail")
