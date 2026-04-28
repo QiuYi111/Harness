@@ -1,0 +1,99 @@
+# Blast Radius Policy — Machine-parseable risk classification
+# Used by: harness classify-risk
+
+risk_levels:
+  infra:
+    priority: 4
+    autonomy: very_low
+    description: "Deployment, CI/CD, secrets, migrations"
+    pattern_groups:
+      - name: ci_cd
+        patterns:
+          - ".github/*"
+          - ".gitlab-ci.yml"
+          - "Jenkinsfile"
+      - name: container
+        patterns:
+          - "Dockerfile*"
+          - "docker-compose*"
+      - name: secrets
+        patterns:
+          - "*.env*"
+      - name: infrastructure
+        patterns:
+          - "terraform/*"
+      - name: database
+        patterns:
+          - "migrations/*"
+          - "db/*"
+    required_gates:
+      - dry_run
+      - explicit_human_approval
+      - rollback_plan
+      - security_review
+
+  core:
+    priority: 3
+    autonomy: low
+    description: "Domain, auth, storage, permissions, protocol"
+    pattern_groups:
+      - name: auth
+        patterns:
+          - "*auth*"
+          - "*permission*"
+          - "*rbac*"
+      - name: schema
+        patterns:
+          - "*migration*"
+          - "*schema*"
+      - name: domain
+        patterns:
+          - "internal/domain/*"
+    required_gates:
+      - human_spec_review
+      - architecture_review
+      - rollback_plan
+      - security_review
+
+  branch:
+    priority: 2
+    autonomy: medium
+    description: "Feature-level or multi-file behavior change"
+    pattern_groups:
+      - name: infrastructure_layer
+        patterns:
+          - "internal/infrastructure/*"
+      - name: entrypoints
+        patterns:
+          - "cmd/*"
+      - name: api
+        patterns:
+          - "api/*"
+    required_gates:
+      - spec
+      - plan
+      - tests
+      - review_agent
+
+  leaf:
+    priority: 1
+    autonomy: high
+    description: "Isolated, low-dependency changes"
+    pattern_groups:
+      - name: docs
+        patterns:
+          - "docs/*"
+          - "*.md"
+          - "*.txt"
+      - name: tests
+        patterns:
+          - "tests/*"
+      - name: scripts
+        patterns:
+          - "scripts/*"
+      - name: templates
+        patterns:
+          - "templates/*"
+    required_gates:
+      - lint
+      - unit_test

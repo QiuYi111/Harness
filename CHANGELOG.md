@@ -5,6 +5,28 @@ All notable changes to Harness will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-04-28
+
+### Changed
+
+- **Architecture pivot**: From template repo to composable skill pack. 18 templates → 12 composable skills.
+- **Skill-based system**: Each skill has a SKILL.md with YAML frontmatter, imperative instructions, and linked reference files (progressive disclosure pattern from mattpocock/skills).
+- **Plugin registry**: `.claude-plugin/plugin.json` registers all 12 skills for Claude Code.
+- **Thin CLI**: `harness_runtime/` Python package with `harness` command for deterministic operations (classify-risk, verify-ai, eval, context, status).
+- **Installer**: `scripts/link-skills.sh` symlinks skills into agent-specific directories.
+
+### Added
+
+- **12 skills**: harness-specify, harness-plan, harness-tasks, harness-tdd, harness-risk, harness-eval, harness-report, harness-context, harness-domain-language, harness-grill, harness-architecture-review, harness-init.
+- **DOMAIN-AWARENESS.md**: Universal consumer contract for all engineering skills.
+- **Resources structure**: `resources/templates/`, `resources/policies/`, `resources/examples/`.
+- **Bucket READMEs**: skills/engineering/README.md, skills/productivity/README.md, skills/misc/README.md.
+
+### Removed
+
+- Direct template copying workflow (replaced by skill-based invocation).
+- Bash-only gate scripts (ported to Python CLI).
+
 ## [2.0.0] - 2025-01-28
 
 ### Added

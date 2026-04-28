@@ -1,0 +1,45 @@
+# Project Index Schema — Feature tracking
+# Used by: harness status, harness context
+
+schema_version: "1.0"
+
+feature:
+  id_pattern: "^\\d{3}-[a-z0-9-]+$"
+  required_artifacts:
+    - spec.md
+    - plan.md
+    - tasks.md
+    - eval.md
+    - report.md
+  optional_artifacts:
+    - prd.md
+    - contract.md
+    - data_model.md
+  lifecycle:
+    - spec
+    - plan
+    - tasks
+    - implement
+    - eval
+    - report
+    - review
+
+project:
+  required_dirs:
+    - specs
+    - templates
+  optional_dirs:
+    - docs
+    - scripts
+    - skills
+  config_files:
+    - AGENTS.md
+    - CLAUDE.md
+    - Makefile
+
+status_values:
+  - pending      # Spec created, not started
+  - in_progress  # Implementation underway
+  - review       # Awaiting review
+  - complete     # Eval passed, report filed
+  - blocked      # Waiting on dependency

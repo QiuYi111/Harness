@@ -1,0 +1,84 @@
+# Gate Definitions — Per risk level
+# Used by: harness classify-risk, harness verify-ai
+
+gates:
+  lint:
+    description: "Code style and syntax check"
+    type: automated
+    command: "make lint"
+
+  unit_test:
+    description: "Unit test suite"
+    type: automated
+    command: "make test"
+
+  spec:
+    description: "Feature specification exists and is complete"
+    type: automated
+    check: "specs/{feature}/spec.md exists and non-empty"
+
+  plan:
+    description: "Implementation plan exists and is complete"
+    type: automated
+    check: "specs/{feature}/plan.md exists and non-empty"
+
+  tests:
+    description: "Test coverage for the change"
+    type: automated
+    command: "make test"
+
+  review_agent:
+    description: "Automated review agent validation"
+    type: automated
+    check: "Automated review passes"
+
+  human_spec_review:
+    description: "Human reviews specification before implementation"
+    type: manual
+    required_for: [core, infra]
+
+  architecture_review:
+    description: "Architecture review for structural changes"
+    type: manual
+    required_for: [core, infra]
+
+  rollback_plan:
+    description: "Rollback plan documented before implementation"
+    type: manual
+    required_for: [core, infra]
+    check: "specs/{feature}/plan.md contains rollback section"
+
+  security_review:
+    description: "Security review for sensitive changes"
+    type: manual
+    required_for: [core, infra]
+
+  dry_run:
+    description: "Dry-run execution before applying changes"
+    type: manual
+    required_for: [infra]
+
+  explicit_human_approval:
+    description: "Explicit human sign-off required"
+    type: manual
+    required_for: [infra]
+
+risk_gate_map:
+  leaf:
+    - lint
+    - unit_test
+  branch:
+    - spec
+    - plan
+    - tests
+    - review_agent
+  core:
+    - human_spec_review
+    - architecture_review
+    - rollback_plan
+    - security_review
+  infra:
+    - dry_run
+    - explicit_human_approval
+    - rollback_plan
+    - security_review
