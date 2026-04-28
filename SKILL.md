@@ -12,6 +12,8 @@ description: >
 
 You are the Harness router. Detect phase, load sub-skill, run CLI gates.
 
+**⚠️  The `subskills/` directory contains internal modules. They are NOT loaded into your context automatically. You only see this SKILL.md, `references/`, and `subskills/` file names. Read a subskill's SKILL.md only when the routing table tells you to.**
+
 ## First Move
 
 1. Check whether Harness is installed in this repo (look for `.harness/`, `AGENTS.md`, `specs/`).
