@@ -7,8 +7,6 @@
 
 Do not use complex Hexagonal/Onion terminology if it confuses the team. Use this simple structure:
 
-TODO: sync with guide
-
 ```text
 Project/
 ├── api/                  # [Contract Layer]
@@ -45,5 +43,30 @@ Project/
    ```go
    repo := persistence.NewPostgresUserRepo(db) // Infra
    service := domain.NewUserService(repo)      // Domain
-   server.Run(service)
-   ```
+    server.Run(service)
+    ```
+
+## DDD Layers to Blast Radius Mapping
+
+| Layer | Risk Level | Reason |
+|---|---|---|
+| docs/ | leaf | No runtime behavior |
+| tests/ | leaf | Verification only |
+| scripts/ | leaf/branch | Depends on usage |
+| api/contracts/ | branch/core | External behavior |
+| internal/infrastructure/ | branch | Service behavior |
+| internal/domain/ | core | Business invariant |
+| auth/permissions/ | core | Security boundary |
+| migrations/schema/ | core/infra | Data/deployment boundary |
+| CI/CD/deploy/ | infra | Production execution |
+
+## Dependency Direction
+
+```
+domain → nothing
+infrastructure → domain
+cmd → domain + infrastructure
+api → generated boundary
+```
+
+Domain depends on NOTHING. Infrastructure depends on domain. Never reverse.

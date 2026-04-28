@@ -1,42 +1,66 @@
 # .pre-commit-config.yaml
-# The First Line of Defense
+# Harness v2 - The First Line of Defense
 
 repos:
   # 1. Standard Hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.6.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
 
-  # 2. Language Specific (Example: Python + Ruff)
+  # 2. Secret Scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # 3. Conventional Commits
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert]
+
+  # 4. Language Specific (Example: Python + Ruff)
   # - repo: https://github.com/astral-sh/ruff-pre-commit
   #   rev: v0.1.0
   #   hooks:
   #     - id: ruff
   #     - id: ruff-format
 
-  # 3. Language Specific (Example: Go)
+  # 5. Language Specific (Example: Go)
   # - repo: https://github.com/golangci/golangci-lint
   #   rev: v1.55.2
   #   hooks:
   #     - id: golangci-lint
 
-  # 4. Custom Policy: Enforce Tests for Domain Logic
-  #    If a file is added to `internal/domain`, a corresponding `_test` file MUST exist.
+  # 6. Harness Policy: Enforce Tests for Domain Logic
   - repo: local
     hooks:
       - id: require-tests
-        name: Check for Tests
+        name: Check for Tests (Domain Policy)
         entry: >
           bash -c 'for f in "$@"; do
             if [[ "$f" == *"internal/domain"* ]] && [[ "$f" != *"_test"* ]]; then
-              # Logic to check for test file...
-              echo "⚠️  Policy: Domain logic must have tests. Please verify.";
+              echo "⚠️  Harness Policy: Domain logic must have corresponding tests. Please verify: $f";
             fi;
           done' --
+        language: system
+        pass_filenames: true
+
+      - id: no-ai-slop
+        name: Check for AI-generated placeholders
+        entry: >
+          bash -c 'grep -rn "I apologize\|As an AI\|I cannot fulfill\|TODO: implement\|FIXME:" "$@" 2>/dev/null && {
+            echo "⚠️  Harness Policy: Remove AI-generated placeholders before commit.";
+            exit 1;
+          } || true' --
         language: system
         pass_filenames: true

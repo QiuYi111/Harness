@@ -1,89 +1,92 @@
 <div align="center">
-  <h1>Framework</h1>
-  <p><em>"Pragmatic > Dogmatic. Automation > Manual. Consensus > Command."</em></p>
+  <h1>Harness</h1>
+  <p><em>Spec-governed, risk-classified engineering for AI agents.</em></p>
 </div>
 
----
+## What is Harness?
 
-This framework is distilled from high-performance engineering teams to solve the problem of "Chaos in Growth." It enforces process strictly by leveraging Environment as Code, Contract-First design, Strict Domain-Driven Design (DDD), and seamless AI Collaboration.
+Harness is a spec-governed, risk-classified engineering template for AI agents.
 
-## 🌟 The Core Philosophy
+It is not another prompt pack. It is a lightweight engineering harness that tells coding agents what to build, what not to touch, how to prove it works, and when to stop.
 
-- **Environment as Code:** "It works on my machine" is an invalid defense. If it requires more than `make init` and `make up` to start developing, it is broken. Docker Compose and Dev Containers are not optional.
-- **Contract First (Schema-Driven):** We do not write code to "see if it works." We agree on the interface, then we fulfill the contract. No backend code is written until the API definition (Protobuf/OpenAPI) is reviewed and merged.
-- **Strict Isolation (Pragmatic DDD):** Physical design must prevent "Spaghetti Dependencies". The `domain` logic is pure and depends on **NOTHING**. The `infrastructure` (Database, HTTP/gRPC) depends on the `domain`, never the reverse.
-- **AI-First Collaboration:** Workflows involve AI agents governed by customized prompts (`CLAUDE.md`). AI generates boilerplates, assists in Testing, and executes routines, while humans define architecture and verify functionality.
+## Why not just use Spec Kit / CLAUDE.md / AGENTS.md?
 
-## 🏗 Standard Architecture
+Each of those solves one piece of the problem. Spec Kit handles the spec lifecycle, CLAUDE.md governs a single agent, and AGENTS.md sets cross-agent standards. Harness combines all three into one coherent system: specs drive the work, policies bound the agents, and a shared Makefile ties it together. No glue code, no manual wiring.
 
-We employ a Three-Layer Standard to maintain maintainable and testable software without confusing terminology:
+## Core Ideas
 
-```text
-Project/
-├── api/                  # [Contract Layer] Protobufs / OpenAPI Specs
-├── cmd/                  # [Boot Layer] Main applications (Wires everything)
-├── internal/             # [Private Code]
-│   ├── domain/           # [Core Domain] Pure Business Logic & Interfaces
-│   └── infrastructure/   # [Infrastructure & Adapter] DB/HTTP Implementations
-├── docs/                 # [Documentation] PRDs, Plans, Wikis, Reports
-├── tests/                # [Verification] E2E / BDD Tests
-├── scripts/              # [Automation] Helper scripts
-├── 3rdParty/             # [Dependencies] Git submodules for external repos
-└── Makefile              # [Interface] The Development Command Center
+- **Spec-Governed Development.** Every feature follows `PRD → SPEC → PLAN → TASKS → IMPLEMENT → EVAL → REPORT`. Agents don't invent scope; they execute what the spec says.
+- **DDD Enforcement.** Strict domain/infrastructure isolation. Domain logic depends on nothing. Infrastructure depends on the domain, never the reverse.
+- **TDD Role Isolation.** RED/GREEN/REFACTOR/REVIEWER roles with file boundaries. The agent writing tests cannot edit production code. The implementer cannot touch tests.
+- **Blast-Radius-Based Autonomy.** Agent freedom scales with risk level. Low-risk work gets full autonomy. Core domain changes require human review.
+- **Makefile as Gatekeeper.** All commands exposed through make targets. `make verify` runs the gates. `make verify-ai` checks spec compliance.
+
+## Quick Start
+
+```bash
+make init
+make spec-init FEATURE=001-first-feature
+# Fill specs/001-first-feature/spec.md
+# Fill specs/001-first-feature/plan.md
+make verify
+make verify-ai
 ```
 
-## 🚀 Getting Started
+That's it. Write your spec, fill your plan, run the gates.
 
-Follow these steps to apply the **Neural-Grid Framework** to your project:
+## Workflow
 
-1. **The AI Collaboration Foundation**: Check `templates/CLAUDE.md`. Copy it to your root and customize `<DOMAIN_EXPERT>` and `<TECH_STACK>` to establish operational contexts for AI agents.
-2. **The Law**: Adopt `templates/CONTRIBUTING.md`. It sets the team's expectations immediately. Replace language/tools as needed but preserve the structural principles.
-3. **The Interface**: Adopt `templates/Makefile`. It's the sole surface area everyone interacts with. Setup `make init`, `make test`, and `make lint` specific to your tech stack.
-4. **The Gatekeeper**: Start using `templates/.pre-commit-config.yaml`. This ensures bad formatting or garbage code never touches the main branch.
-5. **The Architecture**: Adopt Pragmatic DDD inside your `internal/` package as shown above to segregate domain logic from third-party or DB logic.
+```
+PRD → SPEC → PLAN → TASKS → IMPLEMENT → EVAL → REPORT → REVIEW
+```
 
-## 🔄 The "Golden Path" Workflow
+- **PRD** — What we're building and why. Business context, success criteria.
+- **SPEC** — What the feature must do. Inputs, outputs, edge cases, constraints.
+- **PLAN** — How we'll build it. Architecture decisions, file changes, dependencies.
+- **TASKS** — Execution order. A task DAG that agents can work through independently.
+- **IMPLEMENT** — Agents write code against the spec. Tests gate every change.
+- **EVAL** — Did it work? Product acceptance + harness compliance checks.
+- **REPORT** — Evidence package. What was built, what was tested, what was deferred.
+- **REVIEW** — Human signs off or sends it back.
 
-Creativity belongs in the solution, not the process. The process should be boring and automatic. For any new feature ticket, proceed with:
+## Template Inventory
 
-1. **Define/Contract:** Change the API definition first (`api/proto` or equivalent).
-2. **Generate:** Run `make proto` or similar to stamp out types and schemas.
-3. **Test:** Write the exact failure case via BDD (Integration Tests) and TDD (Unit Tests).
-4. **Implement:** Fill the `domain` implementation until tests turn Green. Refactor as needed.
-5. **Verify:** Run the local gatekeeper (`make verify` or CI checks).
+All templates live in `templates/`. Copy what you need, customize the placeholders.
 
-## 📄 Included Templates
+| Template | Purpose |
+|---|---|
+| `PRD_TEMPLATE.md` | Product-level requirements |
+| `SPEC_TEMPLATE.md` | Feature-level specification |
+| `PLAN_TEMPLATE.md` | Technical implementation plan |
+| `TASKS_TEMPLATE.md` | Task DAG for agent execution |
+| `EVAL_TEMPLATE.md` | Product + harness evaluation |
+| `REPORT_TEMPLATE.md` | Implementation evidence package |
+| `BLAST_RADIUS_POLICY.md` | Risk classification policy |
+| `ROLE_POLICY.md` | TDD role boundaries |
+| `AGENTS.md` | Cross-agent standard |
+| `CLAUDE.md` | Claude-specific routing layer |
+| `QUICKSTART_TEMPLATE.md` | Getting started guide |
+| `CONTRACT_TEMPLATE.md` | API/contract placeholder |
+| `DATA_MODEL_TEMPLATE.md` | Entity/schema documentation |
+| `CONSTITUTION_TEMPLATE.md` | Project principles |
 
-This repository includes several ready-to-use boilerplate templates under `templates/`:
+## Risk Levels
 
-- `ARCHITECTURE.md`: Simple guide on isolating `domain` and `infrastructure`.
-- `CLAUDE.md`: Highly opinionated prompt framework for strict Agent roles (TDD-RED, Implementer, Refactorer, Review).
-- `CONTRIBUTING.md`: Development rules, Git workflow, and Makefile references.
-- `PRD_TEMPLATE.md`: Structured, AI-readable Product Requirements Document standard.
-- `.pre-commit-config.yaml`: Pre-configured pre-commit gating mechanism.
-- `Makefile`: Foundation template for build environments.
+| Level | Autonomy | What |
+|---|---|---|
+| `leaf` | High | Docs, tests, isolated components |
+| `branch` | Medium | Features, services, endpoints |
+| `core` | Low | Domain model, auth, permissions |
+| `infra` | Very Low | Deployment, CI/CD, secrets |
 
----
+When uncertain, escalate to the higher risk level.
 
-**Observability & Gatekeeping**
+## Agent Compatibility
 
-> Logs are for machines, not humans (Banned: `print`, `console.log`). The CI/CD pipeline is the ultimate authority. If CI is red, the branch does not exist.
+Works with Claude Code, Codex, Cursor, Gemini, Windsurf, and any agent that reads `AGENTS.md` or `CLAUDE.md`.
 
-# Working With the Framework
-## Getting PRD and ROADMAP
-This is the most important step.
-+ Talk to some sota models like Gemini 3.1 Pro or Claude Ops to get your need clear
-+ Write down your clarified needs and background into a prd file
-+ Talk to sota models about the implementing plan to generate a ROADMAP file
-+ Open new conversations to review the prd and roadmap multiple turns **until sota models can not find a tiny problem and fit your needs perfectly**
+## Roadmap
 
-## Developing
-Mostly repeating the TDD of each phase
-
-## Reviews
-Using sota models to review the working code base generated by AI multiple turns. and write down bugs into a report file.
-This Step should be focused on logic and prd alignment.
-
-## Documenting
-+ Write ComprehensiveaREADEME, without buzzword and bluff.
-+ Use Deepwiki to generate human readable wiki
+- **v2.0** — Template-first + minimal executable gates (current)
+- **v2.5** — Lightweight hooks and policy scripts
+- **v3.0** — Full CLI/runtime/eval runner/context bundle generator

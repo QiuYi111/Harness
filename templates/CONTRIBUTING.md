@@ -30,8 +30,14 @@ We do not memorize commands. We use `make`.
 | `make down` | Tears down infrastructure and cleans volumes. |
 | `make proto` | **Generates** code from contracts. |
 | `make test` | Runs Unit + Integration tests. |
+| `make typecheck` | Runs type checks. |
+| `make contract-test` | Runs contract tests. |
+| `make security-scan` | Scans for security issues (gitleaks). |
 | `make lint` | Runs linters and static checks. |
 | `make verify` | **The Gatekeeper**. Runs everything. Run this before push. |
+| `make verify-ai` | Harness/process verification (template integrity + policy compliance). |
+| `make classify-risk` | Classifies current changes by blast radius risk level. |
+| `make spec-init FEATURE=xxx` | Creates feature spec directory with templates. |
 
 ---
 
@@ -39,31 +45,31 @@ We do not memorize commands. We use `make`.
 
 When you pick up a ticket, follow this **exact** sequence:
 
-### Phase 0: AI Context Assembly
-1.  **Sync Framework**: Ensure `CLAUDE.md` is correctly configured in your project root.
-2.  **Generate Index**: Run `/sc:index-repo` (or equivalent) so the AI has the latest `project_index`.
-3.  **Feed Requirements**: Provide the Agent with the relevant `docs/requirements/` and `docs/plan/` files.
+### Phase 0: Context Assembly
+1. Read AGENTS.md and CLAUDE.md for project context.
+2. Read the active feature spec (specs/xxx/spec.md).
 
-### Phase 1: Contract
-1.  **Modify Contract**: Edit API definition.
-2.  **Gen**: Run `make proto`.
-3.  **Commit**: "feat(api): add new endpoint".
+### Phase 1: Specification
+3. Create feature spec directory: `make spec-init FEATURE=001-feature-name`
+4. Fill `spec.md` with user scenarios and acceptance criteria.
+5. Fill `plan.md` with technical approach and DDD impact.
+6. Classify blast radius: run `make classify-risk`.
 
-### Phase 2: Domain (TDD)
-1.  **Define**: Create/Update `internal/domain/entity.go`.
-2.  **Test**: Create `internal/domain/entity_test.go`.
-3.  **Cycle**: Red -> Green -> Refactor.
-    -   *Constraint*: Domain code **cannot** import `infrastructure` or external libs.
+### Phase 2: Task Planning
+7. Fill `tasks.md` with task DAG (include [P] parallel markers and [US] story references).
 
-### Phase 3: Infrastructure (BDD)
-1.  **Implement**: Write `internal/infrastructure/handler.go`.
-2.  **Verify**: Write integration test.
-    -   *Requirement*: Test **must** hit the real database in Docker.
+### Phase 3: Implementation
+8. Write tests first (TDD-RED role — tests/** only).
+9. Implement minimal code (TDD-GREEN role — internal/**, cmd/** only).
+10. Refactor if needed (TDD-REFACTOR role — never touch tests).
 
-### Phase 4: Submission
-1.  **Local Gate**: Run `make verify`.
-2.  **Commit**: Conventional Commits (e.g., `feat(user): implement login`).
-3.  **Push**: CI will run `make verify` again.
+### Phase 4: Verification
+11. Run `make verify` (product verification).
+12. Run `make verify-ai` (harness/process verification).
+
+### Phase 5: Evidence & Review
+13. Fill `eval.md` with acceptance results and harness evaluation.
+14. Fill `report.md` with implementation evidence, files changed, and risk classification.
 
 ---
 

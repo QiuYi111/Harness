@@ -1,6 +1,6 @@
 # Implementation Guide
 
-How to apply the **Neural-Grid Framework** to your project.
+How to apply **Harness** to your project.
 
 ## 1. Directory Structure
 
@@ -52,6 +52,19 @@ Copy `templates/Makefile` to your root.
 - **Why**: Unifies how everyone interacts with the project.
 - **Action**: Fill in the `init`, `test`, `lint` commands for your specific stack (Go, Python, TypeScript).
 
+### Step 3.5: Spec Lifecycle Setup
+
+Use `make spec-init FEATURE=001-first-feature` to create feature spec directories.
+
+Each feature gets its own directory under `specs/` with:
+- `spec.md` — Feature requirements and acceptance criteria
+- `plan.md` — Technical implementation plan with blast radius classification
+- `tasks.md` — Task DAG for agent execution
+- `eval.md` — Product and harness evaluation
+- `report.md` — Implementation evidence
+
+The full lifecycle: PRD → SPEC → PLAN → TASKS → IMPLEMENT → EVAL → REPORT
+
 ### Step 4: The "Gatekeeper"
 
 Copy `templates/.pre-commit-config.yaml` to your root.
@@ -72,8 +85,11 @@ Refactor one module to follow strict DDD.
 
 Enforce this loop for every feature:
 
-1. **Contract**: Change API definition first.
-2. **Generate**: Run `make proto` / `make gen`.
-3. **Test**: Write a failing test.
-4. **Code**: Implement logic.
-5. **Verify**: Run `make verify`.
+1. **Spec**: Create feature spec directory with `make spec-init FEATURE=xxx`.
+2. **Contract**: Change API definition first.
+3. **Generate**: Run `make proto` / `make gen`.
+4. **Classify**: Run `make classify-risk` to determine blast radius.
+5. **Test**: Write a failing test.
+6. **Code**: Implement logic.
+7. **Verify**: Run `make verify`.
+8. **Verify AI**: Run `make verify-ai` to check harness compliance.

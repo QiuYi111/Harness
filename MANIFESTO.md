@@ -2,7 +2,7 @@
 
 > "Pragmatic > Dogmatic. Automation > Manual. Consensus > Command."
 
-This framework is not just a collection of tools; it is a **discipline**. It is distilled from high-performance engineering teams to solve the problem of "Chaos in Growth."
+Harness is not just a collection of tools; it is a **discipline**. It is distilled from high-performance engineering teams to solve the problem of "Chaos in Growth."
 
 ## 1. The Core Philosophy
 
@@ -35,6 +35,17 @@ Creativity belongs in the solution, not the process. The process should be borin
 2. **Test**: Write the failure case (TDD/BDD).
 3. **Implement**: Make it green.
 4. **Verify**: Run the local gatekeeper.
+
+### 1.5 Risk-Classified Autonomy
+
+Not all code is equal. Agent autonomy must scale with the blast radius of the change.
+
+- **leaf**: High autonomy. Docs, tests, isolated components. Agent proceeds with lint + unit tests.
+- **branch**: Medium autonomy. Features, services, endpoints. Agent needs spec + plan + review.
+- **core**: Low autonomy. Domain model, auth, permissions. Human must review spec and architecture.
+- **infra**: Very low autonomy. Deployment, CI/CD, secrets. Human explicitly approves every change.
+
+When uncertain, escalate to the higher risk level. When touching multiple files, apply the strictest classification.
 
 ## 2. The Quality Standards
 
