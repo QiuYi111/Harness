@@ -12,7 +12,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HARNESS_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKILLS_DIR="$HARNESS_ROOT/skills"
+SOURCE_DIR="$HARNESS_ROOT"
 
 AGENT="${1:-claude-code}"
 TARGET_DIR="${2:-}"
@@ -39,43 +39,28 @@ case "$AGENT" in
 esac
 
 echo "Installing Harness skills for $AGENT..."
-echo "  Source: $SKILLS_DIR"
+echo "  Source: $SOURCE_DIR"
 echo "  Target: $TARGET_DIR"
 
-# Create target directory
-mkdir -p "$TARGET_DIR"
+if [ -e "$TARGET_DIR" ]; then
+  if [ -L "$TARGET_DIR" ]; then
+    rm "$TARGET_DIR"
+    echo "  ↻ Replacing existing symlink"
+  elif [ -d "$TARGET_DIR" ]; then
+    echo "  ⚠ Target exists as directory. Remove manually: $TARGET_DIR"
+    exit 1
+  fi
+fi
 
-# Find and link all skill directories
-linked=0
+mkdir -p "$(dirname "$TARGET_DIR")"
+ln -s "$SOURCE_DIR" "$TARGET_DIR"
+echo "  ✓ Linked: harness (root skill + subskills)"
+
+linked=1
 skipped=0
 
-for bucket in engineering productivity misc; do
-  bucket_dir="$SKILLS_DIR/$bucket"
-  [ -d "$bucket_dir" ] || continue
-
-  for skill_dir in "$bucket_dir"/*/; do
-    [ -d "$skill_dir" ] || continue
-    skill_name="$(basename "$skill_dir")"
-    target="$TARGET_DIR/$skill_name"
-
-    if [ -L "$target" ]; then
-      # Update existing symlink
-      ln -sfn "$skill_dir" "$target"
-      echo "  ↻ Updated: $skill_name"
-    elif [ -e "$target" ]; then
-      echo "  ⚠ Skipped (exists): $skill_name"
-      ((skipped++))
-      continue
-    else
-      ln -s "$skill_dir" "$target"
-      echo "  ✓ Linked: $skill_name"
-    fi
-    ((linked++))
-  done
-done
-
 echo ""
-echo "Done. Linked $linked skills, skipped $skipped."
+echo "Done. Linked $linked skill, skipped $skipped."
 echo ""
 
 # Also copy .claude-plugin if installing for Claude Code

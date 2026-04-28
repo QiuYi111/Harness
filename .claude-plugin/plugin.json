@@ -1,18 +1,20 @@
 {
-  "name": "harness-skills",
-  "description": "A composable skill pack for governed AI engineering. Spec-driven, risk-classified, role-isolated.",
+  "name": "harness",
+  "description": "Cache-friendly engineering governance for AI coding agents. Spec-driven, risk-classified, role-isolated.",
   "skills": [
-    "./skills/engineering/harness-specify",
-    "./skills/engineering/harness-plan",
-    "./skills/engineering/harness-tasks",
-    "./skills/engineering/harness-tdd",
-    "./skills/engineering/harness-risk",
-    "./skills/engineering/harness-eval",
-    "./skills/engineering/harness-report",
-    "./skills/engineering/harness-context",
-    "./skills/engineering/harness-domain-language",
-    "./skills/productivity/harness-grill",
-    "./skills/productivity/harness-architecture-review",
-    "./skills/misc/harness-init"
+    ".",
+    "./subskills/specify",
+    "./subskills/plan",
+    "./subskills/tasks",
+    "./subskills/tdd",
+    "./subskills/risk",
+    "./subskills/eval",
+    "./subskills/report",
+    "./subskills/context",
+    "./subskills/cache",
+    "./subskills/domain-language",
+    "./subskills/grill",
+    "./subskills/architecture-review",
+    "./subskills/init"
   ]
 }

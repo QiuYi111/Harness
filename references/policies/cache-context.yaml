@@ -1,0 +1,36 @@
+# Cache Context Geometry — Machine-parseable cache-aware assembly config
+# Used by: harness context --cache-aware, harness-cache skill
+
+stable_prefix:
+  - skills/engineering/harness-risk/SKILL.md
+  - skills/engineering/harness-tdd/SKILL.md
+  - skills/engineering/harness-tasks/SKILL.md
+  - AGENTS.md
+  - CACHE.md
+  - .harness/policies/blast-radius.yaml
+  - .harness/policies/roles.yaml
+
+semi_stable_context:
+  - project_index/repo.md
+  - project_index/modules/*.md
+  - docs/ARCHITECTURE.md
+  - docs/adr/*.md
+
+active_feature_context:
+  - specs/{feature}/spec.md
+  - specs/{feature}/plan.md
+  - specs/{feature}/tasks.md
+
+dynamic_suffix:
+  - current_user_request
+  - git_diff
+  - test_logs
+  - error_messages
+
+ignore:
+  - .git/**
+  - node_modules/**
+  - dist/**
+  - build/**
+  - coverage/**
+  - 3rdParty/**

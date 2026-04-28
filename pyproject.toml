@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-harness = "harness_runtime.cli:main"
+harness = "scripts.harness_runtime.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["harness_runtime*"]
+include = ["scripts.harness_runtime*"]
