@@ -38,15 +38,27 @@ def install_skills(
     except OSError as e:
         errors.append(f"harness: {e}")
 
-    plugin_src = harness_root / ".claude-plugin" / "plugin.json"
     plugin_copied = False
-    if agent == "claude-code" and plugin_src.exists():
+    if agent == "claude-code":
+        import json
         plugin_target = Path(os.path.expanduser("~/.claude-plugin"))
         plugin_target.mkdir(parents=True, exist_ok=True)
         dest = plugin_target / "plugin.json"
-        if not dest.exists():
-            import shutil
-            shutil.copy2(plugin_src, dest)
+        plugin_data = {
+            "name": "harness",
+            "description": "Cache-friendly engineering governance for AI coding agents.",
+            "skills": [str(skills_dir.resolve())],
+        }
+        existing = {}
+        if dest.exists():
+            try:
+                existing = json.loads(dest.read_text())
+            except (json.JSONDecodeError, ValueError):
+                pass
+        existing_skills = existing.get("skills", [])
+        if existing_skills != [str(skills_dir.resolve())]:
+            existing.update(plugin_data)
+            dest.write_text(json.dumps(existing, indent=2))
             plugin_copied = True
 
     return {

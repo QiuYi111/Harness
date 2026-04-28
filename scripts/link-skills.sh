@@ -63,26 +63,25 @@ echo ""
 echo "Done. Linked $linked skill, skipped $skipped."
 echo ""
 
-# Also copy .claude-plugin if installing for Claude Code
 if [ "$AGENT" = "claude-code" ]; then
-  plugin_src="$HARNESS_ROOT/.claude-plugin/plugin.json"
-  if [ -f "$plugin_src" ]; then
-    plugin_target="$HOME/.claude-plugin"
-    mkdir -p "$plugin_target"
-    if [ -f "$plugin_target/plugin.json" ]; then
-      echo "⚠ ~/.claude-plugin/plugin.json already exists — not overwriting."
-      echo "  Merge harness skills into your existing plugin.json manually."
-    else
-      cp "$plugin_src" "$plugin_target/plugin.json"
-      echo "✓ Copied .claude-plugin/plugin.json"
-    fi
+  plugin_target="$HOME/.claude-plugin"
+  mkdir -p "$plugin_target"
+  if [ -f "$plugin_target/plugin.json" ]; then
+    echo "⚠ ~/.claude-plugin/plugin.json already exists."
+    echo "  Add this manually:"
+    echo "  {\"name\":\"harness\", \"skills\":[\"$SOURCE_DIR\"]}"
+  else
+    cat > "$plugin_target/plugin.json" <<PLUGINEOF
+{
+  "name": "harness",
+  "description": "Cache-friendly engineering governance for AI coding agents.",
+  "skills": ["$SOURCE_DIR"]
+}
+PLUGINEOF
+    echo "✓ Wrote ~/.claude-plugin/plugin.json with absolute path"
   fi
 fi
 
 echo ""
-echo "Skills installed. Agents can now invoke Harness skills by name."
-echo "Available skills:"
-echo "  harness-specify, harness-plan, harness-tasks, harness-tdd"
-echo "  harness-risk, harness-eval, harness-report, harness-context"
-echo "  harness-domain-language, harness-grill, harness-architecture-review"
-echo "  harness-init"
+echo "Harness installed. Your agent now loads one skill: harness"
+echo "The router inside detects phases and loads subskills on demand."

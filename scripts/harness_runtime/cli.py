@@ -389,36 +389,69 @@ def status(project):
 @click.option("--project", default=None, help="Project root")
 def cache_report(project):
     """Show estimated token breakdown by cache layer."""
-    from .fingerprint import load_cache_config, fingerprint_layers, estimate_tokens
+    from .fingerprint import estimate_tokens
 
     project_root = Path(project).resolve() if project else _git_root()
+
+    click.echo("=== Cache Report ===\n")
+
+    click.echo("## Harness Stable Prefix (same across all projects)")
+    click.echo("")
+    harness_total = 0
+    harness_files = [
+        SKILLS_DIR.parent / "SKILL.md",
+    ]
+    for sd in sorted(SKILLS_DIR.iterdir()):
+        if sd.is_dir():
+            sk = sd / "SKILL.md"
+            if sk.exists():
+                harness_files.append(sk)
+    for f in harness_files:
+        try:
+            content = f.read_text(errors="replace")
+            tokens = estimate_tokens(content)
+            harness_total += tokens
+            display = f.relative_to(DIST_ROOT) if f.is_relative_to(DIST_ROOT) else f.name
+            click.echo(f"  {str(display):45s} ~{tokens:>5} tokens")
+        except OSError:
+            pass
+    click.echo(f"  {'─' * 50}")
+    click.echo(f"  Harness stable prefix total:        ~{harness_total} tokens")
+    click.echo("")
+
+    click.echo("## Project Protocol")
+    click.echo("")
+    project_total = 0
     config_path = project_root / ".harness" / "policies" / "cache-context.yaml"
     if not config_path.exists():
         config_path = POLICIES_DIR / "cache-context.yaml"
 
+    from .fingerprint import load_cache_config
     layers = load_cache_config(config_path)
-    if not layers:
-        click.echo("No cache-context.yaml found.")
-        return
+    project_files = []
+    for paths in layers.values():
+        for p in paths:
+            fpath = project_root / p
+            if fpath.exists():
+                project_files.append(fpath)
 
-    fingerprints = fingerprint_layers(layers, project_root)
+    for f in sorted(set(project_files)):
+        try:
+            content = f.read_text(errors="replace")
+            tokens = estimate_tokens(content)
+            project_total += tokens
+            click.echo(f"  {f.name:35s} ~{tokens:>5} tokens")
+        except OSError:
+            pass
+    click.echo(f"  {'─' * 50}")
+    click.echo(f"  Project protocol total:              ~{project_total} tokens")
+    click.echo("")
 
-    click.echo("=== Cache Report ===\n")
-
-    total = 0
-    layer_order = ["stable_prefix", "semi_stable_context", "active_feature_context", "dynamic_suffix"]
-    for name in layer_order:
-        paths = layers.get(name, [])
-        est = sum(estimate_tokens((project_root / p).read_text(errors="replace"))
-                  for p in paths if (project_root / p).exists())
-        total += est
-        fp = fingerprints.get(name, "N/A")
-        click.echo(f"  {name}: ~{est} tokens  (fp: {fp})")
-
-    click.echo(f"\n  Total stable/semi-stable: ~{total} tokens")
-    click.echo(f"  Cacheable ratio (stable+semistable/total): depends on active feature size")
+    click.echo(f"## Summary")
+    click.echo(f"  Harness prefix:   ~{harness_total} tokens  (stable across all projects)")
+    click.echo(f"  Project protocol: ~{project_total} tokens  (stable within project)")
+    click.echo(f"  Combined stable:  ~{harness_total + project_total} tokens")
     click.echo(f"\nNote: token estimates are approximate (4 chars/token).")
-    click.echo(f"Run with actual API for precise cached_tokens metrics.")
 
 
 if __name__ == "__main__":
