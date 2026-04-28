@@ -5,3 +5,4 @@ dist/
 build/
 .sisyphus/
 3rdParty/
+.DS_Store

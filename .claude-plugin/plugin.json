@@ -1,20 +1,7 @@
 {
   "name": "harness",
-  "description": "Cache-friendly engineering governance for AI coding agents. Spec-driven, risk-classified, role-isolated.",
+  "description": "Cache-friendly engineering governance for AI coding agents. The root harness skill is the only public entry point. Subskills under subskills/ are internal progressive-disclosure modules loaded only when routed by harness.",
   "skills": [
-    ".",
-    "./subskills/specify",
-    "./subskills/plan",
-    "./subskills/tasks",
-    "./subskills/tdd",
-    "./subskills/risk",
-    "./subskills/eval",
-    "./subskills/report",
-    "./subskills/context",
-    "./subskills/cache",
-    "./subskills/domain-language",
-    "./subskills/grill",
-    "./subskills/architecture-review",
-    "./subskills/init"
+    "."
   ]
 }

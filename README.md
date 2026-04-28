@@ -1,64 +1,53 @@
 <div align="center">
   <h1>Harness</h1>
-  <p><em>A composable skill pack for governed AI engineering.</em></p>
+  <p><em>A root skill with progressively disclosed subskills for governed AI engineering.</em></p>
 </div>
 
 ## What is Harness?
 
-Harness is a skill pack of 12 composable engineering skills for AI coding agents. Each skill does one job. Use them individually or compose them into a full spec-governed workflow.
+Harness is a single skill pack — one root `harness` skill that automatically detects your engineering phase, routes to the right internal subskill, and runs deterministic CLI gates.
 
-It is not a framework you submit to. It is a set of tools you invoke. No mandatory pipeline, no orchestration layer.
+Most users never need to pick a subskill manually. Invoke `harness`, say "use Harness", or just describe your task. The router handles the rest.
+
+No mandatory pipeline. No framework to submit to. Subskills are internal modules loaded on demand by the router — they are not exposed as standalone entries.
 
 ## Quick Start
 
 ```bash
-# Install Harness skills into your agent
+git clone https://github.com/QiuYi111/Harness
+cd Harness
+pip install -e .                    # editable install only (see below)
 ./scripts/link-skills.sh claude-code
-
-# Or use the CLI
-pip install -e .
-harness init
-harness install-skills
 ```
 
-Your agent now sees all 12 skills. Invoke them by name when you need them.
+Your agent now loads one skill: `harness`. The router inside detcts phases and loads subskills as needed.
 
-## The Skills
+> **Note:** Harness currently supports **source/editable install** (`pip install -e .`). Standard wheel packaging is planned but not yet available. The CLI works from the cloned repo directory.
 
-### Engineering (Core Workflow)
+## How It Works
 
-| Skill | What It Does | When to Use |
-|-------|-------------|-------------|
-| **harness-specify** | Create a feature spec with user stories, Given/When/Then scenarios, success criteria | "spec this", "write a PRD", "define this feature" |
-| **harness-plan** | Create an implementation plan with architecture impact and blast-radius classification | "plan this", "turn spec into plan" |
-| **harness-tasks** | Break a plan into vertical-slice tasks with dependencies and parallel markers | "break this down", "create task list" |
-| **harness-tdd** | Role-isolated TDD: RED/GREEN/REFACTOR/REVIEWER with file-level boundaries | "TDD this", "test-first", "red green refactor" |
-| **harness-risk** | Classify a change by blast radius (leaf/branch/core/infra) and determine required gates | "what's the risk", "classify this change" |
-| **harness-eval** | Evaluate implementation against spec + process compliance | "did it work", "check compliance" |
-| **harness-report** | Produce an implementation report with evidence, risk classification, rollback plan | "write it up", "create evidence package" |
-| **harness-context** | Create a minimal context bundle to reduce agent context pollution | "what should I read", "reduce my context" |
-| **harness-domain-language** | Extract and maintain a DDD ubiquitous language, CONTEXT.md, and ADR records | "define our terms", "ubiquitous language" |
-
-### Productivity
-
-| Skill | What It Does | When to Use |
-|-------|-------------|-------------|
-| **harness-grill** | Stress-test a plan or spec with pointed questions, one at a time | "grill me", "challenge this plan", "requirements fuzzy" |
-| **harness-architecture-review** | Find shallow modules, DDD violations, and testability gaps | "review architecture", "codebase feels complex" |
-
-### Utility
-
-| Skill | What It Does | When to Use |
-|-------|-------------|-------------|
-| **harness-init** | Initialize a project with Harness engineering discipline | "new project", "adopt Harness" |
+```text
+harness (entry router)
+  │
+  ├─ detect phase ───────────────────────┐
+  ├─ route to right subskill              │
+  ├─ run CLI gate (classify-risk, etc.)   │ references/ (policies, templates, protocols)
+  └─ auto-advance until risk gate         │
+                                          │
+  subskills/ (loaded on demand) ◄─────────┘
+  ├── specify   plan   tasks    tdd   risk
+  ├── context   eval   report   cache
+  ├── domain-language   grill   architecture-review
+  └── init
+```
 
 ## Core Ideas
 
-- **Spec-Governed Development.** Every feature follows `SPEC → PLAN → TASKS → IMPLEMENT → EVAL → REPORT`. Agents don't invent scope; they execute what the spec says.
-- **DDD Enforcement.** Strict domain/infrastructure isolation. Domain logic depends on nothing. Infrastructure depends on the domain, never the reverse.
+- **Entry Router.** The `harness` skill detects your current phase (no spec → intake → planning → implementation → verification) and loads the right subskill. You don't pick subskills; the router routes you.
+- **Risk-Classified Autonomy.** Agent freedom scales with blast radius. Leaf changes proceed unattended. Core/infra changes require explicit human approval.
 - **TDD Role Isolation.** RED/GREEN/REFACTOR/REVIEWER roles with file-level boundaries enforced by `harness verify-ai`.
-- **Blast-Radius-Based Autonomy.** Agent freedom scales with risk level. Leaf changes get full autonomy. Core changes require human review.
-- **Skills Are Tools, Not a Pipeline.** Invoke any skill independently. No mandatory workflow. `harness-grill` works without `harness-specify`. `harness-risk` works without any other skill.
+- **Cache-Aware Context Assembly.** Stable content first, dynamic content last. `harness context --cache-aware` produces cache-friendly context bundles.
+- **DDD Enforcement.** Domain logic depends on nothing. Infrastructure depends on the domain, never the reverse.
 
 ## Risk Levels
 
@@ -73,67 +62,71 @@ When uncertain, escalate to the higher risk level.
 
 ## CLI
 
-The thin deterministic CLI handles what can be done without judgment:
+The deterministic CLI handles what can be done without judgment:
 
 ```bash
-harness init                    # Create directory structure
-harness install-skills          # Symlink skills to agent dirs
-harness specify 001-feature     # Create specs/001-feature/ skeleton
-harness classify-risk           # Path-based blast radius classifier
-harness verify-ai               # Check spec compliance + role boundaries
-harness eval 001-feature        # Run spec compliance checks
-harness context 001-feature     # Generate minimal context bundle
-harness status                  # Show active features + gate status
+harness init                  # Initialize a project
+harness install-skills        # Symlink skills to agent dir
+harness specify 001-feature   # Create feature skeleton
+harness classify-risk         # Classify blast radius from changed files
+harness verify-ai             # Check skill-pack integrity + role boundaries
+harness eval 001-feature      # Run spec compliance checks
+harness context 001-feature   # Generate context bundle
+harness context 001-feature --cache-aware --write  # Cache-friendly bundle
+harness cache-report          # Token breakdown by cache layer
+harness status                # Show active features + gate status
 ```
-
-## The Deterministic Line
 
 CLI commands handle deterministic operations. Skills handle judgment.
 
-| Can be done without an LLM? | Goes in |
-|---|---|
-| Yes | `harness` CLI |
-| No | Skill (SKILL.md) |
+## Internal Subskills
 
-## Design Philosophy
+These are loaded on demand by the harness router. You can invoke them directly, but you rarely need to:
 
-Harness is inspired by [mattpocock/skills](https://github.com/mattpocock/skills) — small, composable, single-purpose skills with progressive disclosure (description → SKILL.md → reference files). What Harness adds on top:
-
-- **Risk classification** — every change is leaf/branch/core/infra
-- **Role isolation** — TDD with file-level enforcement, not just process
-- **Evidence requirements** — eval and report produce auditable evidence
-- **Domain language** — DDD ubiquitous language + ADRs as first-class artifacts
-
-## Agent Compatibility
-
-Works with Claude Code, Codex, Cursor, Windsurf, and any agent that reads SKILL.md files. The `link-skills.sh` installer symlinks skills into agent-specific directories.
-
-## What Changed from v2
-
-v2 was a template repo — copy templates, fill placeholders. v3 is a skill pack — agents load skills on demand, follow structured instructions, and produce governed artifacts.
-
-| v2 | v3 |
-|---|---|
-| 18 template files | 12 composable skills |
-| Copy-paste workflow | Agent-invoked skills |
-| Bash scripts for gates | Python CLI |
-| Templates as source of truth | Skills as source of truth, templates as resources |
+| Subskill | Purpose |
+|----------|---------|
+| **specify** | Create feature specs with user stories, scenarios, success criteria |
+| **plan** | Implementation plan with architecture impact and risk classification |
+| **tasks** | Vertical-slice task DAG with dependencies and parallel markers |
+| **tdd** | Role-isolated TDD: RED/GREEN/REFACTOR/REVIEWER with file boundaries |
+| **risk** | Classify change by blast radius and determine required gates |
+| **eval** | Evaluate implementation against spec and process compliance |
+| **report** | Implementation report with evidence, risk, rollback plan |
+| **context** | Minimal context bundle to reduce agent context pollution |
+| **cache** | Cache-friendly context assembly with stable-first ordering |
+| **domain-language** | DDD ubiquitous language, CONTEXT.md, ADR records |
+| **grill** | Stress-test plans and specs with pointed questions |
+| **architecture-review** | Find shallow modules, DDD violations, testability gaps |
+| **init** | Initialize a project with Harness engineering discipline |
 
 ## Directory Structure
 
 ```
-Harness/
-├── skills/              # 12 composable skills
-│   ├── engineering/     # 9 core workflow skills
-│   ├── productivity/    # 2 process skills
-│   └── misc/            # 1 utility skill
-├── harness_runtime/     # Thin deterministic CLI
-├── resources/
-│   ├── templates/       # Supporting templates
-│   └── policies/        # Machine-parseable policies
-├── scripts/             # Installer script
-└── .claude-plugin/      # Plugin registry
+Harness/                   # This IS the harness skill — clone directly
+├── SKILL.md               # Root entry point (router/autopilot)
+├── subskills/             # Internal progressive-disclosure modules
+├── references/            # Shared policies, templates, routing tables
+│   ├── policies/          # blast-radius.yaml, gates.yaml, cache-context.yaml
+│   ├── templates/         # Project scaffolds (spec, plan, CACHE.md, Makefile…)
+│   └── examples/          # Reference projects
+├── scripts/               # Installer + thin CLI runtime
+│   ├── harness_runtime/   # Python CLI modules
+│   └── link-skills.sh     # Skill installer
+├── .claude-plugin/        # Plugin registry (registers harness as sole entry)
+├── MANIFESTO.md           # Engineering principles
+├── README.md
+└── VERSION
 ```
+
+## What Changed from v2
+
+| v2 | v3 |
+|---|---|
+| Template repo — copy-paste workflow | Skill pack — agent loads harness, router does the rest |
+| 18 template files, 12 flat skills | 1 root skill, 13 internal subskills |
+| Bash scripts for gates | Python CLI with 9 commands |
+| Templates as source of truth | Skills as source of truth, templates as resources |
+| Bucket-organized directories | Flat subskills/ + references/ structure |
 
 ## License
 

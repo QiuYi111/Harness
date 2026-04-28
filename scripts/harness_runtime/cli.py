@@ -72,15 +72,14 @@ def init(target):
     click.echo("Initializing Harness project...")
     click.echo(f"  Project root: {project_root}")
 
-    dirs_to_create = ["specs", ".harness"]
+    dirs_to_create = ["specs", ".harness", ".harness/policies"]
     for d in dirs_to_create:
         path = project_root / d
-        path.mkdir(exist_ok=True)
+        path.mkdir(parents=True, exist_ok=True)
         click.echo(f"  ✓ {d}/")
 
     templates_to_copy = [
-        "AGENTS.md", "CLAUDE.md", "Makefile",
-        "BLAST_RADIUS_POLICY.md", "ROLE_POLICY.md",
+        "AGENTS.md", "CLAUDE.md", "Makefile", "CACHE.md",
     ]
     for t in templates_to_copy:
         src = TEMPLATES_DIR / t
@@ -92,6 +91,20 @@ def init(target):
             click.echo(f"  ↻ {t} already exists")
         else:
             click.echo(f"  ⚠ template {t} not found at {src}")
+
+    policy_files = [
+        "blast-radius.yaml", "gates.yaml", "cache-context.yaml",
+    ]
+    for p in policy_files:
+        src = POLICIES_DIR / p
+        dst = project_root / ".harness" / "policies" / p
+        if src.exists() and not dst.exists():
+            shutil.copy2(src, dst)
+            click.echo(f"  ✓ copied .harness/policies/{p}")
+        elif dst.exists():
+            click.echo(f"  ↻ .harness/policies/{p} already exists")
+        else:
+            click.echo(f"  ⚠ policy {p} not found at {src}")
 
     install_skills(DIST_ROOT)
     click.echo("\nDone. Run 'harness status' to verify.")

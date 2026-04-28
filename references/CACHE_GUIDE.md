@@ -3,7 +3,9 @@
 ## Why Cache Engineering Matters
 
 - **Token savings.** LLM providers charge less for cached prefix tokens. A
-  well-ordered prompt can reduce per-call cost by 30-50% for multi-turn
+well-ordered prompt can reduce repeated-prefix cost in multi-turn sessions
+when provider prompt caching is active. Exact savings depend on cache
+semantics and prompt assembly.
   implementation sessions.
 - **Reduced exploration.** When the agent's context starts with stable protocol
   files (policies, skill instructions, domain language), it spends fewer tokens
