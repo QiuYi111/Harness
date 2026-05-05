@@ -5,7 +5,11 @@ Map user intent to the correct Harness skill.
 | User Intent | First Skill | Then |
 |---|---|---|
 | "build this feature" | harness | grill/specify -> plan -> tasks -> risk |
-| "fix this bug" | harness-risk | context -> tdd -> eval/report |
+| "fix this bug" | harness-maintain-debug | reproduce -> evidence -> diagnose -> patch -> regression -> review |
+| "test failed" | harness-maintain-debug | reproduce -> diagnose -> regression |
+| "debug this" | harness-maintain-debug | reproduce -> evidence -> diagnose -> patch -> regression -> review |
+| "regression" | harness-maintain-debug | compare recent changes -> reproduce -> patch -> regression |
+| "flaky test" | harness-maintain-debug | collect evidence -> isolate nondeterminism -> add stability check |
 | "review this PR" | harness-risk | eval -> report -> architecture-review |
 | "make a plan" | harness-plan | tasks |
 | "break into tasks" | harness-tasks | risk |

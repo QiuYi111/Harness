@@ -68,6 +68,37 @@ Gate strictness scales with blast radius:
 - **core**: + human_spec_review, architecture_review, rollback_plan, security_review
 - **infra**: + dry_run, human_approval, rollback_plan, security_review
 
+## Iron Law
+
+```
+NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
+```
+
+If you haven't run the verification command in this session, you cannot claim it passes.
+
+## Red Flags — STOP and Verify
+
+- Claiming "tests pass" without running the test command right now
+- Claiming "lint clean" based on a previous run
+- Saying "should work now" without running verification
+- Expressing satisfaction ("Great!", "Done!") before seeing verification output
+- Trusting a subagent's success report without independent verification
+- Marking eval as "pass" without attaching evidence
+
+**ALL of these mean: STOP. Run the verification command. Read the output. THEN make the claim.**
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|---|---|
+| "Should work now" | Run the verification. |
+| "I'm confident" | Confidence ≠ evidence. |
+| "Just this once" | No exceptions. |
+| "Linter passed so it's fine" | Linter ≠ compiler ≠ test suite. |
+| "Agent said success" | Verify independently. |
+| "Partial check is enough" | Partial proves nothing. |
+| "Tests passed earlier" | Earlier ≠ now. Run them again. |
+
 ## Output
 
 Write `specs/<feature>/eval.md` using the format in [EVAL_FORMAT.md](./EVAL_FORMAT.md).

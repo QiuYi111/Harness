@@ -42,6 +42,17 @@ Action: use `harness-report`
 Signals: user says codebase is messy, large refactor, unclear module boundaries, DDD violation suspected
 Action: use `harness-architecture-review`
 
+## Maintenance Debug Phase
+
+Signals:
+- User mentions bug, failing test, regression, unexpected behavior
+- Existing codebase (not green-field)
+- Fix request without new feature intent
+- Stack trace / error log present
+- `maintenance/debug/` directory exists with open records
+
+Action: use `harness-maintain-debug`
+
 ## Cache/Context Phase
 
 Signals: context too large, agent repeatedly reading same files, user asks about cache/cost/token reduction
@@ -52,8 +63,9 @@ Action: use `harness-cache`, then `harness-context`
 For a given repository:
 
 1. Check for `.harness/` and `AGENTS.md` -> if missing, No Harness
-2. Check `specs/` for feature directories -> if none with spec.md, Intake Phase
-3. For each feature, check artifact presence in order: spec -> plan -> tasks -> eval -> report
-4. The earliest missing artifact determines the phase
-5. If all artifacts present and code changes are requested, Implementation Phase
-6. If all artifacts present and user asks about completion, Verification Phase
+2. **Check for debug signals** (bug keywords, error logs, stack traces) -> if present, Maintenance Debug Phase
+3. Check `specs/` for feature directories -> if none with spec.md, Intake Phase
+4. For each feature, check artifact presence in order: spec -> plan -> tasks -> eval -> report
+5. The earliest missing artifact determines the phase
+6. If all artifacts present and code changes are requested, Implementation Phase
+7. If all artifacts present and user asks about completion, Verification Phase
