@@ -70,3 +70,32 @@ Side effects happen inline as decisions crystallize:
 - **User rejects with a load-bearing reason?** Offer an ADR: _"Want me to record this so future reviews don't re-suggest it?"_ (see [../domain-language/ADR_FORMAT.md](../domain-language/ADR_FORMAT.md)).
 
 Use the deepening methodology in [DEEPENING_GUIDE.md](./DEEPENING_GUIDE.md) when designing the refactored module's dependency strategy.
+
+## Required Output
+
+After the grilling loop completes, produce `docs/architecture-review-YYYY-MM-DD.md`:
+
+```markdown
+# Architecture Review: YYYY-MM-DD
+
+## Candidates Identified
+
+| # | Module | Problem | Proposed Solution |
+|---|---|---|---|
+| 1 | | | |
+
+## Decisions Made
+
+- [Decision 1 with rationale]
+- [Decision 2 with rationale]
+
+## ADRs Created
+
+- [ADR-NNNN: title]
+
+## Deferred
+
+- [Items intentionally not addressed, with reason]
+```
+
+This file persists findings across sessions. If the session ends mid-grilling, the user has a record of what was explored.

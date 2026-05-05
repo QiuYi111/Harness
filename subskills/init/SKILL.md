@@ -16,6 +16,9 @@ Bootstrap a project with the full Harness engineering stack: spec governance, DD
 ├── .harness/
 │   └── config.yaml
 ├── specs/
+├── maintenance/
+│   ├── debug/
+│   └── index.md
 ├── docs/
 │   └── adr/
 ├── CONTEXT.md
@@ -40,6 +43,8 @@ Bootstrap a project with the full Harness engineering stack: spec governance, DD
 - **`UBIQUITOUS_LANGUAGE.md`** — empty DDD term mapping stub
 - **`.harness/config.yaml`** — project config (project name, risk policy path, skill paths)
 - **`specs/`** — empty directory for feature specs
+- **`maintenance/debug/`** — empty directory for debug records
+- **`maintenance/index.md`** — empty maintenance index (from DEBUG_INDEX_TEMPLATE.md)
 - **`docs/adr/`** — empty directory for architecture decision records
 
 ## Process
@@ -68,7 +73,8 @@ Run `harness install-skills` (or equivalent) to wire skill references into the a
 ✅ Harness initialized. Next steps:
 1. Fill CONTEXT.md with your domain terms (use harness-domain-language)
 2. Write your first spec: specs/001-{feature}/spec.md
-3. Run make verify to check setup
+3. Debug issues go to: maintenance/debug/
+4. Run make verify to check setup
 ```
 
 ## Options

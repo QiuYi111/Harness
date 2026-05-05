@@ -26,6 +26,18 @@ Role-isolated Test-Driven Development with enforced file boundaries. Each TDD cy
 
 ## Workflow
 
+### Step 0: Classify Risk
+
+```bash
+harness classify-risk
+```
+
+If risk returns **core** or **infra**: STOP. Require human approval before writing any code.
+
+If risk returns **leaf** or **branch**: proceed to Step 1.
+
+This gate ensures the TDD skill (the primary code-writing skill) never bypasses risk classification, even when invoked directly without going through plan/tasks first.
+
 ### Step 1: Plan the Tracer Bullet
 
 Select one vertical slice from `tasks.md`. Identify the public interface, implementation files, and test files.

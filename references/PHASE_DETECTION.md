@@ -63,9 +63,10 @@ Action: use `harness-cache`, then `harness-context`
 For a given repository:
 
 1. Check for `.harness/` and `AGENTS.md` -> if missing, No Harness
-2. **Check for debug signals** (bug keywords, error logs, stack traces) -> if present, Maintenance Debug Phase
-3. Check `specs/` for feature directories -> if none with spec.md, Intake Phase
-4. For each feature, check artifact presence in order: spec -> plan -> tasks -> eval -> report
-5. The earliest missing artifact determines the phase
-6. If all artifacts present and code changes are requested, Implementation Phase
-7. If all artifacts present and user asks about completion, Verification Phase
+2. **Check for debug signals** (bug keywords, error logs, stack traces, "fix", "broken", "not working") -> if present, Maintenance Debug Phase
+3. **Check for refactor signals** ("refactor", "clean up", "remove dead code", "optimize") -> if present, run `harness-risk` first, then route to plan → tasks → tdd
+4. Check `specs/` for feature directories -> if none with spec.md, Intake Phase
+5. For each feature, check artifact presence in order: spec -> plan -> tasks -> eval -> report
+6. The earliest missing artifact determines the phase
+7. If all artifacts present and code changes are requested, Implementation Phase
+8. If all artifacts present and user asks about completion, Verification Phase

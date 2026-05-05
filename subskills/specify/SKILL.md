@@ -22,7 +22,7 @@ Convert a feature idea into a structured specification. Produces `specs/<feature
 
 1. **Gather context**: Ask the user for the feature name, target users, and core behavior. If the user provides a PRD or loose description, extract the key elements.
 
-2. **Determine feature ID**: Use the existing naming convention in `specs/` (e.g., `001-feature-name`). If no convention exists, ask the user.
+2. **Determine feature ID**: Use the existing naming convention in `specs/` (e.g., `001-feature-name`). If no convention exists, generate as `NNN-<slug>` where NNN is the next available number and slug is derived from the feature description. Do not ask the user unless the slug is ambiguous.
 
 3. **Create spec**: Use `SPEC_FORMAT.md` as the template. Fill every section:
    - User scenarios with Given/When/Then acceptance scenarios

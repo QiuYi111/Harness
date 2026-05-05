@@ -82,4 +82,4 @@ available. See [CACHE_METRICS.md](./CACHE_METRICS.md) for interpretation.
 
 - [CACHE_GUIDE.md](../../references/CACHE_GUIDE.md) -- detailed cache strategy and the four layers
 - [CACHE_METRICS.md](./CACHE_METRICS.md) -- metrics collection and provider notes
-- `../domain-language/DOMAIN-AWARENESS.md` -- domain terminology
+- `../../references/DOMAIN-AWARENESS.md` -- domain terminology
