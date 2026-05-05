@@ -92,6 +92,7 @@ These are loaded on demand by the harness router. You can invoke them directly, 
 | **risk** | Classify change by blast radius and determine required gates |
 | **eval** | Evaluate implementation against spec and process compliance |
 | **report** | Implementation report with evidence, risk, rollback plan |
+| **maintain-debug** | Systematic debugging as a maintenance transaction: symptom → root cause → minimal patch → regression |
 | **context** | Minimal context bundle to reduce agent context pollution |
 | **cache** | Cache-friendly context assembly with stable-first ordering |
 | **domain-language** | DDD ubiquitous language, CONTEXT.md, ADR records |

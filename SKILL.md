@@ -4,8 +4,8 @@ description: >
   Entry point and router for Harness-governed AI engineering. Use automatically for
   software engineering tasks, feature implementation, bug fixes, refactors, architecture
   changes, repository initialization, spec/plan/task workflows, risk classification,
-  TDD, evaluation, reporting, or when the user says "use Harness", "按 Harness 流程",
-  "接管这个任务", "implement this", "fix this", or "review this".
+  TDD, evaluation, reporting, debugging, or when the user says "use Harness", "按 Harness 流程",
+  "接管这个任务", "implement this", "fix this", "debug this", or "review this".
 ---
 
 # Harness Entry Skill

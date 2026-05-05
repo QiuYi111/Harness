@@ -121,3 +121,16 @@ If a checkpoint fails, do not proceed to the next phase. Fix the current phase f
 - TDD-RED creates tests only. TDD-GREEN creates implementation only.
 - Do not skip phases. The checkpoints exist for a reason.
 - If a checkpoint fails, stop and fix before moving forward.
+
+## No Placeholders
+
+Every task must contain the actual content an implementer needs. These are **task failures**:
+
+- "TBD", "TODO", "implement later", "fill in details"
+- "Add appropriate error handling" / "add validation" / "handle edge cases" (without specifics)
+- "Write tests for the above" (without actual test code)
+- "Similar to Task N" (repeat the code — the implementer may be reading tasks out of order)
+- Steps that describe what to do without showing how (code blocks required for code steps)
+- References to types, functions, or methods not defined in any task
+
+If you find any of these, fix them before saving tasks.

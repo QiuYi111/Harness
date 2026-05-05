@@ -72,3 +72,31 @@ Stop and ask human input when:
 - The requested change violates role boundaries
 - Implementation would require changing tests during GREEN phase
 - Security/permission/data-migration implications exist
+
+## Verification Before Claims
+
+Before claiming any status or expressing satisfaction, run the verification gate:
+
+```
+1. IDENTIFY: What command proves this claim?
+2. RUN: Execute the FULL command (fresh, complete)
+3. READ: Full output, check exit code, count failures
+4. VERIFY: Does output confirm the claim?
+   - If NO: State actual status with evidence
+   - If YES: State claim WITH evidence
+5. ONLY THEN: Make the claim
+```
+
+Red flags — STOP and verify before proceeding:
+- Using "should", "probably", "seems to"
+- Expressing satisfaction before verification ("Great!", "Perfect!", "Done!")
+- About to commit/push/PR without verification
+- Trusting agent success reports without independent check
+- Thinking "just this once" is acceptable
+
+| Claim | Requires | Not Sufficient |
+|---|---|---|
+| Tests pass | Test command output: 0 failures | Previous run, "should pass" |
+| Linter clean | Linter output: 0 errors | Partial check |
+| Build succeeds | Build command: exit 0 | Linter passing |
+| Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
