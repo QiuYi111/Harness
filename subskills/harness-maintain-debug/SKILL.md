@@ -171,11 +171,13 @@ Cannot stack patches
    If risk returns **core** or **infra**: STOP. Require human approval before patching.
    Bug fixes are NOT exempt from risk gates.
 
-2. **Create failing test** (see `harness-tdd` for TDD discipline)
-   - Simplest possible reproduction
-   - Automated test preferred
-   - MUST have test before fixing
-   - The test MUST fail first — watch it fail
+ 2. **Create failing test**
+    - For **leaf** risk: write test inline in this skill
+    - For **branch/core/infra** risk: formally invoke `harness-tdd` RED role to write the test, then GREEN role for the fix. This ensures role isolation and `verify-ai` enforcement.
+    - Simplest possible reproduction
+    - Automated test preferred
+    - MUST have test before fixing
+    - The test MUST fail first — watch it fail
 
 3. **Implement minimal fix**
    - Address the root cause identified in Phase 3
@@ -254,7 +256,7 @@ Answer:
 
 ### Phase 7: Close
 
-**Close conditions (all must be met):**
+**Close conditions — base (all must be met):**
 - [ ] Bug reproduced or reproduction failure documented
 - [ ] Root cause written clearly
 - [ ] Patch is minimal (only fixes root cause)
@@ -262,6 +264,21 @@ Answer:
 - [ ] Diff reviewed
 - [ ] Risk level classified
 - [ ] `make verify` passes (if available)
+
+**Additional close conditions by risk level:**
+- **leaf**: Base conditions sufficient
+- **branch**: + `eval.md` produced (load `harness-eval`)
+- **core/infra**: + `eval.md` and `report.md` produced + human sign-off on record.md
+
+**Cannot-reproduce outcome:** If evidence is insufficient after thorough investigation (Phase 2 exhausted):
+1. Document everything investigated in record.md
+2. Implement appropriate monitoring/logging for future investigation
+3. Close with status `cannot-reproduce` (not `closed`)
+4. Record in index.md with summary of what was checked
+
+**Post-close routing:**
+- If risk ≥ branch: load `harness-eval`, then `harness-report`
+- If risk = leaf: close is sufficient
 
 **Update `maintenance/index.md`** with closed entry.
 
@@ -272,19 +289,21 @@ intake
   ↓
 reproducing
   ├─ not-reproduced → evidence-needed
+  │     └─ cannot-reproduce → close-with-note
   └─ reproduced
         ↓
   diagnosing
         ↓
   root-caused
         ↓
-  patching
+  patching ──── [risk gate: core/infra → human approval]
         ↓
   regression
         ↓
   review
         ↓
   closed
+  └─ (if risk ≥ branch → eval → report)
 ```
 
 **Failure escalation:**
@@ -351,6 +370,8 @@ project/
 ```
 
 For small bugs, `record.md` contains everything. For complex bugs, split into separate files as needed.
+
+**MVP note:** All sections currently live in `record.md`. When a record exceeds ~200 lines, split into separate files (`repro.md`, `regression.md`, `review.md`) following the structure in the design doc. The index should always be one row per debug session, not one row per phase.
 
 ## References
 

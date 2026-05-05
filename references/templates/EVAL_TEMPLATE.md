@@ -67,7 +67,7 @@
 | Spec existed before implementation | yes | Written 2026-04-25, code started 2026-04-26 | yes |
 | Plan existed before implementation | yes | `specs/001/plan.md` committed before first code commit | yes |
 | Tasks generated | yes | 8 tasks generated, 8 completed | yes |
-| Blast radius classified | yes | Classified as `domain` in `CLAUDE.md` | yes |
+| Blast radius classified | yes | Classified as `core` in `CLAUDE.md` | yes |
 | Tests not modified during GREEN | yes | Git log shows no test file changes after GREEN phase started | yes |
 | Review report produced | yes | `specs/001/reports/implementation-report.md` filed | yes |
 | `make verify` passed | yes | Exit 0, all lints clean | yes |
