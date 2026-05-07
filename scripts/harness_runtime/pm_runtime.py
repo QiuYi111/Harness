@@ -122,6 +122,7 @@ def parse_state_yaml(project_root: Path) -> dict:
             "needs_user_decision": raw.get("next_action", {}).get("needs_user_decision"),
         },
         "failure_tracking": raw.get("failure_tracking", {}),
+        "last_review_evidence": raw.get("last_review_evidence"),
         "raw": raw,
     }
 
@@ -446,6 +447,16 @@ def decide_next_action(project_root: Path) -> dict:
             "details": details,
         }
 
+    # ── Review evidence gate ─────────────────────────────────────────────
+    last_review_evidence = state.get("last_review_evidence")
+    loop_iteration = raw.get("loop_iteration", 0) or 0
+    if loop_iteration > 0 and not last_review_evidence:
+        return {
+            "action": "review",
+            "reason": "previous_iteration_lacks_review_evidence",
+            "details": ["last_review_evidence is empty — run independent review before delegating"],
+        }
+
     # ── Loop-control directives ──────────────────────────────────────────
     loop = status["loop_control"]
     directive = loop["directive"]
@@ -762,6 +773,10 @@ def get_pm_status(project_root: Path) -> dict:
 
     failure_breaker = get_failure_breaker_status(project_root)
 
+    review_evidence = None
+    if state:
+        review_evidence = state.get("last_review_evidence")
+
     # ok = False only when required files are missing/invalid
     ok = structure["ok"] and state_error is None and loop["valid"]
 
@@ -775,4 +790,5 @@ def get_pm_status(project_root: Path) -> dict:
         "git": git,
         "branch_policy": branch_policy,
         "failure_breaker": failure_breaker,
+        "review_evidence": review_evidence,
     }

@@ -520,6 +520,10 @@ def pm_status(project):
     click.echo(f"  Consecutive: {fb.get('consecutive_failures', 0)}/{fb.get('max_consecutive_failures', 3)}")
     click.echo(f"  {fb.get('reason', '')}")
 
+    re_status = "present" if status.get("review_evidence") else "MISSING"
+    re_icon = "✅" if status.get("review_evidence") else "⚠️ "
+    click.echo(f"\nReview evidence: {re_icon} {re_status}")
+
     if not status["ok"]:
         click.echo("\n🚨 PM runtime state is invalid or incomplete.")
         raise SystemExit(1)
