@@ -7,6 +7,7 @@ from pathlib import Path
 from scripts.harness_runtime.pm_runtime import (
     classify_loop_control,
     decide_next_action,
+    get_branch_correction_plan,
     get_pm_status,
     get_resume_context,
     inspect_git,
@@ -1044,6 +1045,184 @@ class TestGetResumeContext(unittest.TestCase):
             ctx = get_resume_context(root)
             self.assertIsNone(ctx["stage"])
             self.assertIsNone(ctx["phase"])
+
+
+class TestGetBranchCorrectionPlan(unittest.TestCase):
+    _STATE_WITH_GOAL = textwrap.dedent("""\
+        project_id: "test"
+        current_stage: "feasibility"
+        current_phase: "ready_to_delegate"
+        loop_iteration: 1
+        readiness: {}
+        worker: {engine: opencode, role: intern, mode: sync}
+        git: {branch_policy: supervisor_managed, current_goal_branch: "codex/dogfood", auto_merge: false, auto_push: false}
+        next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
+        failure_tracking: {}
+    """)
+
+    _STATE_NO_GOAL = textwrap.dedent("""\
+        project_id: "test"
+        current_stage: "feasibility"
+        current_phase: "ready_to_delegate"
+        loop_iteration: 1
+        readiness: {}
+        worker: {engine: opencode, role: intern, mode: sync}
+        git: {branch_policy: supervisor_managed, auto_merge: false, auto_push: false}
+        next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
+        failure_tracking: {}
+    """)
+
+    def _make_project(self, tmp: str, state_yaml: str | None = None) -> Path:
+        root = Path(tmp)
+        files = {}
+        for name in [
+            "product.md", "roadmap.md", "architecture-guardrails.md", "acceptance-rubric.md"
+        ]:
+            files[f".pm/stable/{name}"] = "content"
+        files[".pm/runtime/state.yaml"] = state_yaml or self._STATE_WITH_GOAL
+        files[".pm/runtime/active-stage.md"] = "stage"
+        files[".pm/runtime/handoff.md"] = "handoff"
+        files[".pm/runtime/loop-control"] = "CONTINUE"
+        files[".pm/runtime/next-task.md"] = "task"
+        _write_tree(root, files)
+        return root
+
+    @staticmethod
+    def _mock_subprocess(verify_rc=0, ancestor_rc=1, reverse_rc=1):
+        from unittest.mock import MagicMock
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            result = MagicMock()
+            cmd = args[0] if args else kwargs.get("args", [])
+            if "rev-parse" in cmd and "--verify" in cmd:
+                result.returncode = verify_rc
+            elif "--is-ancestor" in cmd and "HEAD" in cmd and cmd[-1] == "HEAD":
+                result.returncode = ancestor_rc
+            elif "--is-ancestor" in cmd:
+                result.returncode = reverse_rc
+            else:
+                result.returncode = 0
+            result.stdout = ""
+            result.stderr = ""
+            return result
+
+        return side_effect
+
+    def test_matching_branch_returns_ok(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": "codex/dogfood", "dirty_files": [], "error": None}):
+                result = get_branch_correction_plan(root)
+            self.assertEqual(result["status"], "ok")
+            self.assertEqual(result["commands"], [])
+
+    def test_no_goal_branch_returns_ok(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=self._STATE_NO_GOAL)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": "main", "dirty_files": [], "error": None}):
+                result = get_branch_correction_plan(root)
+            self.assertEqual(result["status"], "ok")
+            self.assertEqual(result["commands"], [])
+
+    def test_expected_ancestor_of_current_returns_fast_forward(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            mock_run = self._mock_subprocess(verify_rc=0, ancestor_rc=0, reverse_rc=1)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": "main", "dirty_files": [], "error": None}), \
+                 patch("scripts.harness_runtime.pm_runtime.subprocess.run", side_effect=mock_run):
+                result = get_branch_correction_plan(root)
+            self.assertEqual(result["status"], "safe_fast_forward_goal_branch")
+            self.assertEqual(len(result["commands"]), 2)
+
+    def test_current_ancestor_of_expected_returns_switch(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            mock_run = self._mock_subprocess(verify_rc=0, ancestor_rc=1, reverse_rc=0)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": "main", "dirty_files": [], "error": None}), \
+                 patch("scripts.harness_runtime.pm_runtime.subprocess.run", side_effect=mock_run):
+                result = get_branch_correction_plan(root)
+            self.assertEqual(result["status"], "safe_switch_to_goal_branch")
+            self.assertEqual(len(result["commands"]), 1)
+
+    def test_diverged_returns_manual_review(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            mock_run = self._mock_subprocess(verify_rc=0, ancestor_rc=1, reverse_rc=1)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": "main", "dirty_files": [], "error": None}), \
+                 patch("scripts.harness_runtime.pm_runtime.subprocess.run", side_effect=mock_run):
+                result = get_branch_correction_plan(root)
+            self.assertEqual(result["status"], "manual_review_required")
+            self.assertEqual(result["commands"], [])
+
+    def test_nonexistent_expected_branch_returns_manual_review(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            mock_run = self._mock_subprocess(verify_rc=128)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": "main", "dirty_files": [], "error": None}), \
+                 patch("scripts.harness_runtime.pm_runtime.subprocess.run", side_effect=mock_run):
+                result = get_branch_correction_plan(root)
+            self.assertEqual(result["status"], "manual_review_required")
+            self.assertEqual(result["commands"], [])
+
+    def test_git_error_returns_unknown(self):
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": None, "dirty_files": [], "error": "not a git repo"}):
+                result = get_branch_correction_plan(root)
+            self.assertEqual(result["status"], "unknown")
+
+    def test_read_only_does_not_mutate(self):
+        import tempfile
+        from unittest.mock import patch, MagicMock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            snapshot = {}
+            for rel in [".pm/runtime/state.yaml", ".pm/runtime/handoff.md",
+                        ".pm/runtime/loop-control"]:
+                p = root / rel
+                snapshot[rel] = p.read_text() if p.exists() else None
+
+            mock_run = self._mock_subprocess(verify_rc=0, ancestor_rc=0, reverse_rc=1)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                       return_value={"branch": "main", "dirty_files": [], "error": None}), \
+                 patch("scripts.harness_runtime.pm_runtime.subprocess.run", side_effect=mock_run):
+                get_branch_correction_plan(root)
+
+            for rel, original in snapshot.items():
+                p = root / rel
+                current = p.read_text() if p.exists() else None
+                self.assertEqual(current, original, f"{rel} was mutated")
 
 
 if __name__ == "__main__":

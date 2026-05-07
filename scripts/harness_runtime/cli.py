@@ -10,7 +10,7 @@ from .verify import run_full_verify, check_role_boundaries
 from .evals import run_eval
 from .context import build_context, format_context, write_context, build_context_cache_aware, format_context_cache_aware
 from .installer import install_skills
-from .pm_runtime import decide_next_action, get_pm_status, get_resume_context
+from .pm_runtime import decide_next_action, get_pm_status, get_resume_context, get_branch_correction_plan
 
 DIST_ROOT = Path(__file__).resolve().parent.parent.parent
 RESOURCES_DIR = DIST_ROOT / "references"
@@ -589,6 +589,28 @@ def pm_resume(project, log_entries):
     for entry in entries:
         first_line = entry.splitlines()[0] if entry else "(empty)"
         click.echo(f"  {first_line}")
+
+
+@main.command("pm-branch-plan")
+@click.option("--project", default=None, help="Project root (default: git root or cwd)")
+def pm_branch_plan(project):
+    """Print a read-only branch correction plan for supervisor recovery."""
+    project_root = Path(project).resolve() if project else _git_root()
+    plan = get_branch_correction_plan(project_root)
+
+    click.echo("=== PM Branch Correction Plan ===\n")
+    click.echo(f"Status: {plan['status']}")
+    if plan.get("current_branch") is not None:
+        click.echo(f"Current branch: {plan['current_branch']}")
+    if plan.get("expected_branch") is not None:
+        click.echo(f"Expected branch: {plan['expected_branch']}")
+    click.echo(f"Reason: {plan['reason']}")
+    if plan.get("commands"):
+        click.echo("\nSuggested commands (read-only suggestion, not executed):")
+        for cmd in plan["commands"]:
+            click.echo(f"  {cmd}")
+    else:
+        click.echo("\nNo correction commands suggested.")
 
 
 if __name__ == "__main__":

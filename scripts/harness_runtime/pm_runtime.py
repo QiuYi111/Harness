@@ -290,6 +290,123 @@ def validate_branch_policy(project_root: Path) -> dict:
     }
 
 
+def get_branch_correction_plan(project_root: Path) -> dict:
+    """Read-only branch correction plan for supervisor recovery.
+
+    Inspects current branch, expected goal branch, and ancestry
+    relationships to suggest safe correction commands — never mutates
+    git state.
+
+    Returns dict with:
+        status (str): one of 'ok', 'safe_fast_forward_goal_branch',
+                      'safe_switch_to_goal_branch', 'manual_review_required',
+                      'unknown'
+        current_branch (str|None): the branch HEAD is on
+        expected_branch (str|None): the goal branch from state.yaml
+        reason (str): human-readable explanation
+        commands (list[str]): suggested non-destructive commands
+    """
+    git = inspect_git(project_root)
+    current_branch = git.get("branch")
+
+    expected_branch = None
+    try:
+        state = parse_state_yaml(project_root)
+        expected_branch = state.get("git_policy", {}).get("goal_branch")
+    except (FileNotFoundError, ValueError):
+        pass
+
+    if not expected_branch:
+        return {
+            "status": "ok",
+            "current_branch": current_branch,
+            "expected_branch": expected_branch,
+            "reason": "no goal branch configured",
+            "commands": [],
+        }
+
+    if git.get("error") or current_branch is None:
+        return {
+            "status": "unknown",
+            "current_branch": current_branch,
+            "expected_branch": expected_branch,
+            "reason": f"git error: {git.get('error', 'branch unavailable')}",
+            "commands": [],
+        }
+
+    if current_branch == expected_branch:
+        return {
+            "status": "ok",
+            "current_branch": current_branch,
+            "expected_branch": expected_branch,
+            "reason": f"already on expected branch '{expected_branch}'",
+            "commands": [],
+        }
+
+    try:
+        verify = subprocess.run(
+            ["git", "rev-parse", "--verify", expected_branch],
+            capture_output=True, text=True, timeout=5,
+            cwd=str(project_root),
+        )
+        if verify.returncode != 0:
+            return {
+                "status": "manual_review_required",
+                "current_branch": current_branch,
+                "expected_branch": expected_branch,
+                "reason": f"expected branch '{expected_branch}' does not exist",
+                "commands": [],
+            }
+
+        ancestor_check = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", expected_branch, "HEAD"],
+            capture_output=True, text=True, timeout=5,
+            cwd=str(project_root),
+        )
+        if ancestor_check.returncode == 0:
+            return {
+                "status": "safe_fast_forward_goal_branch",
+                "current_branch": current_branch,
+                "expected_branch": expected_branch,
+                "reason": f"expected branch '{expected_branch}' is behind current '{current_branch}', safe to fast-forward",
+                "commands": [
+                    f"git branch -f {expected_branch} HEAD",
+                    f"git switch {expected_branch}",
+                ],
+            }
+
+        reverse_check = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", "HEAD", expected_branch],
+            capture_output=True, text=True, timeout=5,
+            cwd=str(project_root),
+        )
+        if reverse_check.returncode == 0:
+            return {
+                "status": "safe_switch_to_goal_branch",
+                "current_branch": current_branch,
+                "expected_branch": expected_branch,
+                "reason": f"current branch '{current_branch}' is behind expected '{expected_branch}', safe to switch",
+                "commands": [f"git switch {expected_branch}"],
+            }
+
+        return {
+            "status": "manual_review_required",
+            "current_branch": current_branch,
+            "expected_branch": expected_branch,
+            "reason": f"branches '{current_branch}' and '{expected_branch}' have diverged",
+            "commands": [],
+        }
+
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return {
+            "status": "unknown",
+            "current_branch": current_branch,
+            "expected_branch": expected_branch,
+            "reason": f"git error: {exc}",
+            "commands": [],
+        }
+
+
 def decide_next_action(project_root: Path) -> dict:
     """Deterministic read-only next-action decision helper for the supervisor.
 

@@ -2,47 +2,39 @@
 
 ## Task summary
 
-Replace supervisor delegation/review protocol with tested slash-command OpenCode invocations and add Makefile entrypoints for PM runtime verification.
+Add a read-only branch correction plan helper (`get_branch_correction_plan`) so the supervisor can recover from branch drift without guessing or mutating git state.
 
 ## What was done
 
-- **Updated**: `.pm/runtime/worker-config.yaml`
-  - Changed sync delegation command from `--agent build -f ... 'Act as harness-intern...'` to `/harness-intern` slash command via `opencode run`
+- **Added**: `get_branch_correction_plan()` in `scripts/harness_runtime/pm_runtime.py`
+  - Purely read-only function that inspects current branch, expected goal branch, and ancestry relationships
+  - Returns one of 5 statuses: `ok`, `safe_fast_forward_goal_branch`, `safe_switch_to_goal_branch`, `manual_review_required`, `unknown`
+  - Suggests non-destructive correction commands when safe to do so
 
-- **Updated**: `references/templates/pm/worker-config.yaml`
-  - Changed template command from `--agent harness-intern --file` to `/harness-intern` slash command matching runtime config
+- **Added**: `pm-branch-plan` CLI command in `scripts/harness_runtime/cli.py`
+  - Click command printing formatted branch correction plan
+  - Follows same pattern as existing `pm-status`, `pm-next`, `pm-resume` commands
 
-- **Updated**: `subskills/supervisor/references/loop-steps.md`
-  - Step 5: Replaced `--agent harness-intern` and "Act as harness-intern" patterns with canonical `/harness-intern` slash command. Added explicit instruction to NOT use `--agent` or natural-language role-play.
-  - Step 6: Added mandatory independent review via `/harness review` for branch+ risk or material claims. Added guidance to spawn multiple independent review agents in parallel for separable questions.
+- **Updated**: `Makefile`
+  - Added `pm-branch-plan` to `.PHONY`
+  - Added `pm-branch-plan` target with help text
 
-- **Updated**: `.pm/decisions.md`
-  - Added decision: Slash-command delegation (`/harness-intern` via OpenCode CLI)
-  - Added decision: Independent review agents for branch+ risk
-  - Added decision: Commit taxonomy (product, pm-ledger, checkpoint with `[prefix]` convention)
-
-- **Created**: `Makefile`
-  - `test`: wraps `uv run python -m pytest tests/ -v`
-  - `verify-ai`: wraps `uv run harness verify-ai`
-  - `pm-status`: wraps `uv run harness pm-status`
-  - `pm-next`: wraps `uv run harness pm-next`
-  - `pm-resume`: wraps `uv run harness pm-resume`
-  - `verify`: runs both `verify-ai` and `pm-status`
-  - `help`: self-documenting target listing
+- **Added**: 8 focused tests in `tests/test_pm_runtime.py`
+  - `TestGetBranchCorrectionPlan` class with all spec-required test cases
+  - All git subprocess calls mocked (no real git repos created)
 
 ## Changed files
 
-- `.pm/runtime/worker-config.yaml`
-- `references/templates/pm/worker-config.yaml`
-- `subskills/supervisor/references/loop-steps.md`
-- `.pm/decisions.md`
-- `Makefile`
+- `scripts/harness_runtime/pm_runtime.py` — added `get_branch_correction_plan()` function
+- `scripts/harness_runtime/cli.py` — added import and `pm-branch-plan` command
+- `Makefile` — added `.PHONY` entry and target
+- `tests/test_pm_runtime.py` — added `TestGetBranchCorrectionPlan` with 8 tests
 
 ## Commands run
 
 ```
 $ make test
-57 passed in 0.62s
+65 passed in 0.68s
 EXIT: 0
 
 $ make verify-ai
@@ -61,37 +53,55 @@ Reason: ready_to_delegate
 EXIT: 0
 
 $ make pm-resume
-Stage: delivery, Phase: worker_running, Loop iteration: 5
+Stage: delivery, Phase: worker_running, Loop iteration: 6
+EXIT: 0
+
+$ make pm-branch-plan
+=== PM Branch Correction Plan ===
+Status: ok
+Current branch: codex/dogfood
+Expected branch: codex/dogfood
+Reason: already on expected branch 'codex/dogfood'
+No correction commands suggested.
 EXIT: 0
 
 $ make verify
-(verify-ai + pm-status both pass)
+(test + verify-ai + pm-status all pass)
 EXIT: 0
 
 $ git status --short
- M .pm/decisions.md
- M .pm/runtime/worker-config.yaml
- M references/templates/pm/worker-config.yaml
- M scripts/harness_runtime/verify.py          (pre-existing, not touched)
- M subskills/opencode-cli/SKILL.md            (pre-existing, not touched)
- M subskills/opencode-cli/references/patterns.md (pre-existing, not touched)
- M subskills/supervisor/references/loop-steps.md
-?? Makefile
+ M Makefile
+ M scripts/harness_runtime/cli.py
+ M scripts/harness_runtime/pm_runtime.py
+ M tests/test_pm_runtime.py
+(verify.py and opencode-cli/* are pre-existing dirty, not touched by this task)
 ```
 
 ## Test results
 
-57 tests pass (no new tests needed — this is a config/doc/Makefile task). All pre-existing tests continue to pass.
+65 tests pass (8 new tests in `TestGetBranchCorrectionPlan`). All pre-existing tests continue to pass.
+
+New tests:
+- `test_matching_branch_returns_ok` — current == expected → ok
+- `test_no_goal_branch_returns_ok` — no goal branch configured → ok
+- `test_expected_ancestor_of_current_returns_fast_forward` — safe fast-forward with 2 commands
+- `test_current_ancestor_of_expected_returns_switch` — safe switch with 1 command
+- `test_diverged_returns_manual_review` — neither is ancestor → manual review
+- `test_nonexistent_expected_branch_returns_manual_review` — branch doesn't exist → manual review
+- `test_git_error_returns_unknown` — git inspection failure → unknown
+- `test_read_only_does_not_mutate` — verifies no file mutations
 
 ## Acceptance criteria
 
-- [x] Worker config and template use `/harness-intern ...` slash-command delegation
-- [x] Supervisor loop docs no longer recommend `--agent harness-intern` or "Act as harness-intern" delegation
-- [x] Supervisor review docs require independent `/harness review ...` review for branch+ or material claims and mention parallel independent reviewers for separable review questions
-- [x] `.pm/decisions.md` records slash delegation, reviewer-agent, and commit-taxonomy decisions
-- [x] Root Makefile exists and `make test`, `make verify-ai`, `make pm-status`, `make pm-next`, `make pm-resume`, and `make verify` work
-- [x] Pre-existing dirty files listed in forbidden scope are not modified or staged by this task
-- [x] One clear git commit is created for this task only
+- [x] `get_branch_correction_plan()` is purely read-only (never mutates git state)
+- [x] Function returns correct status for all 5 cases: ok, safe_fast_forward_goal_branch, safe_switch_to_goal_branch, manual_review_required, unknown
+- [x] CLI command `harness pm-branch-plan` runs without error and prints formatted output
+- [x] Makefile target `pm-branch-plan` added and works
+- [x] All 8 required tests pass with mocked git subprocess calls
+- [x] Import added to both `pm_runtime.py` exports and `cli.py`
+- [x] `.PHONY` line in Makefile updated
+- [x] All verification commands pass (make test, make verify-ai, make pm-status, make pm-next, make pm-resume, make pm-branch-plan, make verify)
+- [x] Forbidden files not touched (verify.py, opencode-cli/SKILL.md, opencode-cli/references/patterns.md, .pm/stable/*)
 
 ## Problems encountered
 
@@ -99,43 +109,12 @@ None.
 
 ## Deviations
 
-None. All changes stayed within allowed scope. Forbidden files (`verify.py`, `opencode-cli/SKILL.md`, `opencode-cli/references/patterns.md`) were not modified. No `.pm/stable/*` files were touched.
-
-## Rework (supervisor review findings)
-
-Two issues were identified by the supervisor review:
-
-### Fix 1: `/review` → `/harness review` in loop-steps.md
-
-**File**: `subskills/supervisor/references/loop-steps.md` line 140
-
-**Problem**: The code block under "Independent review via `/harness review`" used `opencode run "/review ..."` instead of `opencode run "/harness review ..."`. This contradicts the decision recorded in `.pm/decisions.md` (which says `/harness review`) and the task requirement.
-
-**Fix**: Changed `/review` to `/harness review` in the code block.
-
-### Fix 2: Makefile `verify` target missing `test`
-
-**File**: `Makefile` line 21
-
-**Problem**: The `verify` target depended only on `verify-ai pm-status`, but the task requirement and the decisions say verify should be a real project gate including tests.
-
-**Fix**: Added `test` as a dependency: `verify: test verify-ai pm-status`.
-
-### Rework verification
-
-- `make test` → 57 passed
-- `make verify-ai` → 47/0/1
-- `make pm-status` → valid
-- `make verify` → all three pass (test + verify-ai + pm-status)
-- Forbidden files unchanged (pre-existing diffs only)
-- `.pm/decisions.md` not modified (decisions already correct)
-- `.pm/stable/*` not touched
+None. All changes stayed within allowed scope.
 
 ## Evidence
 
 - Branch: `codex/dogfood` (branch-policy ok)
-- All 6 Makefile targets exit 0
-- 57/57 tests pass
+- 65/65 tests pass (8 new + 57 existing)
+- All 7 Makefile targets exit 0 (test, verify-ai, pm-status, pm-next, pm-resume, pm-branch-plan, verify)
 - `harness verify-ai` passes (47/0/1)
-- Forbidden files show pre-existing diffs only, none staged
-- Rework commit created separately from original task commit
+- Forbidden files show pre-existing diffs only, none staged by this task

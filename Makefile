@@ -1,4 +1,4 @@
-.PHONY: test verify-ai pm-status pm-next pm-resume verify help
+.PHONY: test verify-ai pm-status pm-next pm-resume pm-branch-plan verify help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -17,5 +17,8 @@ pm-next: ## Print the deterministic next-action decision for the supervisor
 
 pm-resume: ## Summarize current resume context for an interrupted loop
 	uv run harness pm-resume
+
+pm-branch-plan: ## Print a read-only branch correction plan
+	uv run harness pm-branch-plan
 
 verify: test verify-ai pm-status ## Run all verification checks (test + verify-ai + pm-status)
