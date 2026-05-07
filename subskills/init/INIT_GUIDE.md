@@ -56,7 +56,7 @@ If a template file is missing, skip it silently and print a note. Missing templa
 ```yaml
 project: {project-name}
 version: "3.0"
-risk_policy: ./BLAST_RADIUS_POLICY.md
+  risk_policy: ./policies/blast-radius.yaml
 skills:
   subskills:
     - harness-domain-language

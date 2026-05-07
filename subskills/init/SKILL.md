@@ -15,6 +15,11 @@ Bootstrap a project with the full Harness engineering stack: spec governance, DD
 {project_root}/
 ├── .harness/
 │   └── config.yaml
+├── .pm/
+│   ├── stable/
+│   ├── runtime/
+│   └── design/
+│       └── generated-concepts/
 ├── specs/
 ├── maintenance/
 │   ├── debug/
@@ -37,6 +42,13 @@ Bootstrap a project with the full Harness engineering stack: spec governance, DD
 | `CLAUDE.md` | `./CLAUDE.md` | Claude-specific routing layer |
 | `CACHE.md` | `./CACHE.md` | Cache geometry protocol (stable-first context order) |
 
+### Scripts copied from Harness
+
+| Source | Destination | Purpose |
+|---|---|---|
+| `scripts/verify-ai.sh` | `./scripts/verify-ai.sh` | TDD role boundary enforcement |
+| `scripts/classify-risk.sh` | `./scripts/classify-risk.sh` | Path-based blast radius classifier |
+
 ### Skeleton files created
 
 - **`CONTEXT.md`** — empty glossary stub with the format from `../domain-language/CONTEXT_FORMAT.md`
@@ -46,6 +58,16 @@ Bootstrap a project with the full Harness engineering stack: spec governance, DD
 - **`maintenance/debug/`** — empty directory for debug records
 - **`maintenance/index.md`** — empty maintenance index (from DEBUG_INDEX_TEMPLATE.md)
 - **`docs/adr/`** — empty directory for architecture decision records
+
+### PM directory skeleton (with `--pm` flag)
+
+When `--pm` is specified, additionally create:
+
+- **`.pm/stable/`** — copy all templates from `references/templates/pm/` (product.md, evidence.md, value-proposition.md, ux-principles.md, user-journeys.md, ui-direction.md, roadmap.md, stage-definitions.md, architecture-guardrails.md, acceptance-rubric.md)
+- **`.pm/runtime/`** — copy runtime templates (state.yaml, active-stage.md, next-task.md, worker-report.md, acceptance-review.md, spike-report.md, blockers.md, loop-log.md, handoff.md, loop-control)
+- **`.pm/design/`** — empty directory for design probes and UI feedback
+- **`.pm/decisions.md`** — decision log template
+- **`.pm/runtime/loop-control`** — initialized with `CONTINUE`
 
 ## Process
 
@@ -59,7 +81,7 @@ Templates live in the Harness repo at `templates/`. If running from an installed
 
 ### 3. Create directories and copy files
 
-Create the directory tree. Copy templates. Generate skeleton files.
+Create the directory tree. Copy templates. Copy Harness scripts (`verify-ai.sh`, `classify-risk.sh`) to `./scripts/`. Generate skeleton files.
 
 **Never overwrite existing files.** If a file already exists (e.g., the project already has a `Makefile`), print a warning and skip. The user can merge manually.
 
@@ -81,6 +103,16 @@ Run `harness install-skills` (or equivalent) to wire skill references into the a
 
 - `--force` — overwrite existing files (use with caution)
 - `--minimal` — only create `CONTEXT.md`, `docs/adr/`, and `Makefile` (skip templates)
+- `--pm` — additionally create `.pm/` directory with all PM file templates for product evolution
 - `--templates-dir <path>` — use custom template directory instead of built-in
 
 For the full initialization guide including template resolution and post-init workflows, see [INIT_GUIDE.md](./INIT_GUIDE.md).
+
+## PM Init (standalone)
+
+If a project already has Harness but needs PM support, `harness-grill-product` will create missing `.pm/` files on first run. Alternatively, manually create the structure:
+
+```bash
+mkdir -p .pm/stable .pm/runtime .pm/design/generated-concepts
+# Copy templates from references/templates/pm/ into .pm/stable/ and .pm/runtime/
+```

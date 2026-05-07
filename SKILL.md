@@ -4,8 +4,10 @@ description: >
   Entry point and router for Harness-governed AI engineering. Use automatically for
   software engineering tasks, feature implementation, bug fixes, refactors, architecture
   changes, repository initialization, spec/plan/task workflows, risk classification,
-  TDD, evaluation, reporting, debugging, or when the user says "use Harness", "按 Harness 流程",
-  "接管这个任务", "implement this", "fix this", "debug this", or "review this".
+  TDD, evaluation, reporting, debugging, product definition, supervisor PM loops, 
+  or when the user says "use Harness", "按 Harness 流程", "接管这个任务", 
+  "implement this", "fix this", "debug this", "review this", "product idea",
+  "worth building", "goal", or "supervisor".
 ---
 
 # Harness Entry Skill
@@ -36,6 +38,18 @@ Use these CLI commands for checks that do not require judgment:
 - `harness eval <feature-id>` -- run spec compliance checks
 - `harness context <feature-id>` -- generate minimal context bundle
 - `harness report` -- produce implementation report
+
+## Interpreting `harness status`
+
+When `harness status` returns output, interpret it as follows:
+
+1. **Feature list** — each active feature with its lifecycle phase (spec → plan → tasks → implement → eval → report → review)
+2. **Gate status** — for each feature, which gates have passed and which are pending
+3. **Risk level** — the classified blast radius for each feature
+4. **Blocked features** — any feature with status `blocked` requires investigation
+5. **Action** — the earliest missing artifact determines the next skill to load (see `PHASE_DETECTION.md`)
+
+If no features are active, report "No active features. Start with `harness-specify` to create a new feature, or `harness-grill-product` for product discovery."
 
 ## Stop Conditions
 

@@ -27,10 +27,18 @@ risk_levels:
           - "migrations/*"
           - "db/*"
     required_gates:
-      - dry_run
-      - explicit_human_approval
+      - lint
+      - unit_test
+      - spec
+      - plan
+      - tests
+      - review_agent
+      - human_spec_review
+      - architecture_review
       - rollback_plan
       - security_review
+      - dry_run
+      - explicit_human_approval
 
   core:
     priority: 3
@@ -50,6 +58,12 @@ risk_levels:
         patterns:
           - "internal/domain/*"
     required_gates:
+      - lint
+      - unit_test
+      - spec
+      - plan
+      - tests
+      - review_agent
       - human_spec_review
       - architecture_review
       - rollback_plan

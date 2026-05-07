@@ -2,6 +2,18 @@
 
 Map user intent to the correct Harness skill.
 
+## Product Evolution (PM Loop)
+
+| User Intent | First Skill | Then |
+|---|---|---|
+| "I have a product idea" | harness-grill-product | supervisor → intern → eval loop |
+| "is this worth building" | harness-grill-product | (grill product value, evidence, MVP) |
+| "product definition" / "define this product" | harness-grill-product | (run seven gates, freeze product contract) |
+| "user journey" / "UX principles" / "UI direction" | harness-grill-product | (product discovery gates 5-6) |
+| "MVP boundary" / "what's the smallest version" | harness-grill-product | (product discovery gate 4) |
+| "goal" / "supervisor" / "PM loop" / "advance the product" | harness-supervisor | intern → review → state update loop |
+| "execute task" / "run next-task.md" / "worker" | harness-intern | (read task, execute, report) |
+
 ## Feature Lifecycle
 
 | User Intent | First Skill | Then |
@@ -24,11 +36,13 @@ Map user intent to the correct Harness skill.
 
 | User Intent | First Skill | Then |
 |---|---|---|
-| "refactor X" | harness-risk | plan → tasks → tdd → eval → report |
-| "clean up X" / "remove dead code" | harness-risk | plan → tasks → tdd → eval → report |
-| "optimize X" / "X is slow" | harness-maintain-debug | reproduce → diagnose → (if perf bug: patch → regression; if redesign needed: plan → tdd) |
+| "refactor X" | harness-specify | plan → tasks → risk → context → tdd → eval → report |
+| "clean up X" / "remove dead code" | harness-specify | plan → tasks → risk → context → tdd → eval → report |
+| "optimize X" / "X is slow" | harness-maintain-debug | reproduce → diagnose → (if perf bug: patch → regression; if redesign needed: specify → plan → tdd) |
 | "update dependency X" | harness-risk | tdd → eval → report |
-| "migrate X to Y" | harness-risk | plan → tasks → tdd → eval → report |
+| "migrate X to Y" | harness-specify | plan → tasks → risk → context → tdd → eval → report |
+
+> **Note on refactor specify**: The specify step for refactors is lightweight. It only requires: (1) scope definition — what files/modules are affected, (2) behavior invariants — what must NOT change, (3) known risk points. A full user-story spec is not required. The spec may be a single section in `specs/<id>/spec.md` labeled `## Refactor Scope`.
 
 ## Review / Status
 

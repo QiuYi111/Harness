@@ -27,11 +27,11 @@ feature:
 project:
   required_dirs:
     - specs
-    - templates
   optional_dirs:
     - docs
     - scripts
     - skills
+    - templates
   config_files:
     - AGENTS.md
     - CLAUDE.md

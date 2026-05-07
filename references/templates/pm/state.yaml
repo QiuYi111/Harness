@@ -1,0 +1,67 @@
+project_id: ""
+status: active
+
+# Valid phases (enum):
+#   product_definition | feasibility | ready_to_delegate | worker_running
+#   review_pending | needs_rework | needs_user_decision | blocked
+#   stage_exit_reached | stopped
+current_stage: "product_definition"
+current_stage_goal: "Define what to build, for whom, and why"
+current_phase: "product_definition"
+loop_iteration: 0
+
+ui_direction_required: true
+
+# Agent-loop safety
+max_iterations: null
+consecutive_failures: 0
+max_consecutive_failures: 3
+iteration_valid_count: 0
+iteration_total_count: 0
+
+readiness:
+  product_definition_ready: false
+  evidence_ready: false
+  ux_ready: false
+  ui_direction_ready: false
+  roadmap_ready: false
+  feasibility_ready: false
+
+supervisor_authority:
+  can:
+    - plan
+    - delegate
+    - review
+    - update_state
+    - request_rework
+    - call_grill_product
+    - call_harness_context
+    - call_harness_eval
+  cannot:
+    - change_product_positioning
+    - change_mvp_boundary_without_user
+    - change_core_tech_stack_without_user
+    - approve_core_or_infra_risk
+    - approve_security_payment_auth_changes
+
+worker:
+  engine: opencode
+  role: intern
+  current_task_file: .pm/runtime/next-task.md
+  current_report_file: .pm/runtime/worker-report.md
+  last_run_id: null
+
+last_verified:
+  commit: null
+  test_command: null
+  test_result: unknown
+  harness_eval_result: unknown
+
+next_action:
+  type: "grill_product"
+  summary: "Product definition not yet started"
+  blocked: false
+  needs_user_decision: false
+
+stop_reason: null
+last_updated: ""

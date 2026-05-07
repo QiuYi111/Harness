@@ -22,7 +22,7 @@ This constitution exists so that every contributor, reviewer, and AI agent share
 
 7. **Documentation as Code**: Specs, plans, contracts, and reports live alongside the code in version control. They are updated in the same PR as the code they describe. Out-of-date documentation is treated as a bug.
 
-8. **Blast Radius Classification**: Every change is classified by its blast radius (interface, app, domain, infra, docs) before implementation. Higher-radius changes require additional review and verification steps. Classification is recorded in the feature spec.
+8. **Blast Radius Classification**: Every change is classified by its blast radius (leaf, branch, core, infra) before implementation. Higher-radius changes require additional review and verification steps. Classification is recorded in the feature spec.
 
 ## Governance Rules
 
@@ -30,11 +30,10 @@ This constitution exists so that every contributor, reviewer, and AI agent share
 
 | Change Type | Approver | Review Requirement |
 |-------------|----------|--------------------|
-| Interface layer (routes, handlers) | Tech lead + 1 reviewer | Standard review |
-| Application layer (use cases, services) | Tech lead + 1 reviewer | Standard review |
-| Domain layer (entities, invariants) | Tech lead + 2 reviewers | Extended review, must include domain expert |
-| Infrastructure layer (DB, external services) | Tech lead + 2 reviewers | Extended review, must include infra owner |
-| Documentation | Any reviewer | Light review, focus on accuracy |
+| leaf (docs, tests, isolated scripts) | Any reviewer | Light review, focus on accuracy |
+| branch (features, services, endpoints) | Tech lead + 1 reviewer | Standard review |
+| core (domain model, auth, permissions) | Tech lead + 2 reviewers | Extended review, must include domain expert |
+| infra (deployment, CI/CD, secrets, migrations) | Tech lead + 2 reviewers | Extended review, must include infra owner |
 | Constitution changes | Project lead + team consensus | Full team discussion (see Amendment Process) |
 
 ### Review Requirements

@@ -2,13 +2,12 @@
 # Used by: harness context --cache-aware, harness-cache skill
 
 stable_prefix:
-  - skills/engineering/harness-risk/SKILL.md
-  - skills/engineering/harness-tdd/SKILL.md
-  - skills/engineering/harness-tasks/SKILL.md
+  - subskills/risk/SKILL.md
+  - subskills/tdd/SKILL.md
+  - subskills/tasks/SKILL.md
   - AGENTS.md
   - CACHE.md
   - .harness/policies/blast-radius.yaml
-  - .harness/policies/roles.yaml
 
 semi_stable_context:
   - project_index/repo.md

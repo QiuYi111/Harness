@@ -6,7 +6,6 @@
 well-ordered prompt can reduce repeated-prefix cost in multi-turn sessions
 when provider prompt caching is active. Exact savings depend on cache
 semantics and prompt assembly.
-  implementation sessions.
 - **Reduced exploration.** When the agent's context starts with stable protocol
   files (policies, skill instructions, domain language), it spends fewer tokens
   re-reading files it already saw in previous turns.
@@ -26,7 +25,7 @@ Content that almost never changes during a feature lifecycle.
 - Harness skill instructions (SKILL.md files for active skills)
 - AGENTS.md
 - CACHE.md (this file, declaring the ordering protocol)
-- Policy files: blast-radius.yaml, roles.yaml, cache-context.yaml
+- Policy files: blast-radius.yaml, cache-context.yaml
 - Domain language files: CONTEXT.md, UBIQUITOUS_LANGUAGE.md
 
 These files form the reusable cache prefix. They should be written once and

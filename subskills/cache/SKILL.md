@@ -52,12 +52,12 @@ so stable content is reused across API calls and dynamic content stays at the en
 ### 1. Check for CACHE.md
 
 If `CACHE.md` does not exist at the project root, generate it from
-`resources/templates/CACHE.md`. This declares the context ordering protocol.
+`references/templates/CACHE.md`. This declares the context ordering protocol.
 
 ### 2. Check for cache-context.yaml
 
 If `.harness/policies/cache-context.yaml` does not exist, generate it from
-`resources/policies/cache-context.yaml`. This defines the four-layer cache
+`references/policies/cache-context.yaml`. This defines the four-layer cache
 geometry and the ignore list.
 
 ### 3. Run cache-aware context assembly

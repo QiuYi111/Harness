@@ -68,17 +68,33 @@ risk_gate_map:
     - lint
     - unit_test
   branch:
+    - lint
+    - unit_test
     - spec
     - plan
     - tests
     - review_agent
   core:
+    - lint
+    - unit_test
+    - spec
+    - plan
+    - tests
+    - review_agent
     - human_spec_review
     - architecture_review
     - rollback_plan
     - security_review
   infra:
-    - dry_run
-    - explicit_human_approval
+    - lint
+    - unit_test
+    - spec
+    - plan
+    - tests
+    - review_agent
+    - human_spec_review
+    - architecture_review
     - rollback_plan
     - security_review
+    - dry_run
+    - explicit_human_approval
