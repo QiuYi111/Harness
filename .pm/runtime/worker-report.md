@@ -1,110 +1,54 @@
 # Worker Report
 
 ## Task summary
-
-Add a read-only PM loop run summary helper (`get_loop_summary`) and `pm-summary` CLI command for supervisor audit.
+Added a hard review gate to the PM runtime that prevents the supervisor from delegating the next task without independent review evidence for the previous iteration.
 
 ## What was done
-
-- **Added**: `get_loop_summary()` in `scripts/harness_runtime/pm_runtime.py`
-  - Parses loop-log.md entries to count accepted iterations, reworks, blockers
-  - Extracts delivered iteration summaries (truncated to 120 chars)
-  - Extracts last worker commit hash and date range
-  - Computes valid_rate from state.yaml
-
-- **Added**: `pm-summary` CLI command in `scripts/harness_runtime/cli.py`
-  - Click command printing formatted audit summary
-  - Follows same pattern as existing PM commands
-
-- **Updated**: `Makefile`
-  - Added `pm-summary` to `.PHONY`
-  - Added `pm-summary` target with help text
-
-- **Added**: 7 focused tests in `tests/test_pm_runtime.py`
-  - `TestGetLoopSummary` class with all spec-required test cases
+- Added `last_review_evidence` field extraction to `parse_state_yaml()` in `pm_runtime.py`
+- Added review gate check in `decide_next_action()` — fires after branch policy check, before loop-control directives
+- Added `review_evidence` field to `get_pm_status()` return dict
+- Added review evidence status line to `pm-status` CLI output
+- Added `last_review_evidence` to live `state.yaml` with current review data
+- Added `TestReviewGate` class with 3 tests covering the gate logic
+- Updated existing test fixtures (`_BASE_STATE` in `TestDecideNextAction`, `TestGetResumeContext`, and inline state YAML) to include `last_review_evidence` so they pass with the new gate
 
 ## Changed files
-
-- `scripts/harness_runtime/pm_runtime.py` — added `get_loop_summary()` function
-- `scripts/harness_runtime/cli.py` — added import and `pm-summary` command
-- `Makefile` — added `.PHONY` entry and target
-- `tests/test_pm_runtime.py` — added `TestGetLoopSummary` with 7 tests
+- scripts/harness_runtime/pm_runtime.py — added `last_review_evidence` to `parse_state_yaml`, review gate in `decide_next_action`, `review_evidence` in `get_pm_status`
+- scripts/harness_runtime/cli.py — added review evidence status line to `pm_status` command
+- tests/test_pm_runtime.py — added `TestReviewGate` class (3 tests), updated 5 existing test fixtures with `last_review_evidence`
+- .pm/runtime/state.yaml — added `last_review_evidence` field
 
 ## Commands run
-
-```
-$ make test
-72 passed in 0.70s
-EXIT: 0
-
-$ make verify-ai
-47 passed, 0 failed, 1 warnings
-EXIT: 0
-
-$ make pm-status
-✅ PM runtime state is valid.
-Branch policy: ✅ ok
-EXIT: 0
-
-$ make pm-summary
-=== PM Loop Run Summary ===
-Stage: delivery
-Duration: 2026-05-07
-Last commit: 659c499
-Consecutive failures: 0
-Blockers: 0
-Iterations: 7 accepted, 1 reworks
-Delivered (7):
-  1. PM runtime health-check foundation and `harness pm-status` are available
-  ...
-EXIT: 0
-
-$ make verify
-✅ PM runtime state is valid.
-EXIT: 0
-
-$ git status --short
-(none)
-```
+- `make test` — 80/80 passed
+- `make verify-ai` — 47 passed, 0 failed
+- `make pm-status` — valid, review evidence present
+- `make verify` — all green
 
 ## Test results
-
-72 tests pass (7 new tests in `TestGetLoopSummary`). All pre-existing tests continue to pass.
-
-New tests:
-- `test_empty_log_returns_zeros` — no loop-log → all zeros
-- `test_single_accepted_iteration` — one accepted entry → total_iterations=1
-- `test_rework_counted` — one needs_rework entry → total_reworks=1
-- `test_valid_rate_from_state` — state with 5/5 → valid_rate=1.0
-- `test_dates_extracted` — two entries with different dates → range
-- `test_last_commit_extracted` — Worker commit → last_commit populated
-- `test_blockers_counted` — Phase: blocked → blockers=1
+80 tests passed, 0 failed. New `TestReviewGate` class:
+- `test_missing_review_evidence_blocks_delegate` — loop_iteration>0 with no evidence → action=review, reason=previous_iteration_lacks_review_evidence
+- `test_present_review_evidence_allows_delegate` — loop_iteration>0 with evidence → action=delegate
+- `test_zero_iteration_no_gate` — loop_iteration=0 with no evidence → action=delegate (gate skipped)
 
 ## Acceptance criteria
-
-- [x] `get_loop_summary()` is read-only and deterministic
-- [x] Correctly counts accepted iterations from loop-log.md
-- [x] Correctly counts rework entries
-- [x] Correctly computes valid_rate from state.yaml
-- [x] Extracts last worker commit hash
-- [x] Extracts date range from loop-log
-- [x] Extracts accepted-result summaries (truncated to 120 chars)
-- [x] `harness pm-summary` runs and prints formatted output
-- [x] `make pm-summary` runs
-- [x] `make verify` passes
-- [x] One clear git commit created (`ceec0ce`)
+- [x] `last_review_evidence` extracted in `parse_state_yaml()`
+- [x] Review gate in `decide_next_action()` blocks delegation when `loop_iteration > 0` and no review evidence
+- [x] Gate returns `{"action": "review", "reason": "previous_iteration_lacks_review_evidence"}`
+- [x] `get_pm_status()` includes `review_evidence` in return dict
+- [x] `pm-status` CLI prints review evidence status
+- [x] `state.yaml` updated with `last_review_evidence`
+- [x] 3 new tests in `TestReviewGate` class
+- [x] All 80 tests pass
+- [x] `make verify` passes clean
 
 ## Problems encountered
-
-None.
+Existing tests with `loop_iteration > 0` and no `last_review_evidence` were caught by the new gate. Fixed by adding `last_review_evidence` to affected test fixtures.
 
 ## Deviations
-
-None. All changes stayed within allowed scope.
+None.
 
 ## Evidence
-
-- Branch: `codex/dogfood` (branch-policy ok)
-- 72/72 tests pass (7 new + 65 existing)
-- `make pm-summary` shows 7 accepted iterations with correct delivered summaries
-- Forbidden files not touched
+- `make test`: 80 passed
+- `make verify-ai`: 47 passed, 0 failed
+- `make pm-status`: Review evidence: present
+- Commit: e5595b0

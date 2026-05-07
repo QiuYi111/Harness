@@ -198,3 +198,58 @@ Append-only log. Each supervisor iteration adds one entry.
 - Iteration valid count: 8
 - Iteration total count: 8
 - Next action: continue Stage 2 dogfood with next bounded improvement task
+
+## Supervisor Delegation 9
+
+- Date: 2026-05-07
+- Phase: worker_running
+- Branch: codex/dogfood
+- Summary: Wrote bounded task for failure breaker status helper. Fixed delegation routing: Task tool prompt must load harness-intern skill first.
+- Worker mode: Task tool with skill loading (OpenCode)
+- PM ledger commit: 4f5eeed
+- Process fix: loop-steps.md updated to require `skill(name="harness-intern")` in Task tool prompt
+- Forbidden scope: verify.py, opencode-cli/*, .pm/stable/*, Makefile
+
+## Supervisor Review 9
+
+- Date: 2026-05-07
+- Phase: ready_to_delegate
+- Worker commit: ef20835
+- Verdict: accepted
+- Evidence: 77/77 tests passed (5 new in TestGetFailureBreakerStatus), pm-status shows failure breaker line, make verify passed
+- Accepted result: consecutive failure breaker status is now a first-class check in pm-status and pm-next
+- Delegation fix verified: Task tool with skill loading works correctly
+- Iteration valid count: 9
+- Iteration total count: 9
+- Next action: continue Stage 2 dogfood with next bounded improvement task
+
+## Supervisor Review 9 — Independent Review
+
+- Date: 2026-05-07
+- 3 independent review agents launched in parallel:
+  - Scope reviewer: FAIL — caught loop-steps.md in diff (was supervisor's own commit, not worker's; worker commit clean)
+  - Test reviewer: PASS — all 5 tests cover criteria, deterministic, meaningful assertions
+  - Correctness reviewer: PASS — read-only, handles missing state, None defaults, correct integration
+
+## Supervisor Delegation 10
+
+- Date: 2026-05-07
+- Phase: worker_running
+- Branch: codex/dogfood
+- Summary: Add hard review gate — block delegation without independent review evidence in state.yaml
+- Worker mode: Task tool with skill loading (OpenCode)
+- PM ledger commit: (inline with state update)
+- Motivation: supervisor had been skipping independent review step since iter 8 — structural enforcement needed
+
+## Supervisor Review 10
+
+- Date: 2026-05-07
+- Phase: ready_to_delegate
+- Worker commit: e5595b0
+- Verdict: accepted
+- Evidence: 80/80 tests passed (3 new in TestReviewGate), pm-status shows review evidence line, make verify passed
+- Accepted result: `decide_next_action()` now blocks delegation when loop_iteration > 0 and last_review_evidence is missing
+- Structural guarantee: supervisor CANNOT skip review — pm-next will return "review" instead of "delegate"
+- Iteration valid count: 10
+- Iteration total count: 10
+- Next action: continue Stage 2 dogfood with next bounded improvement task
