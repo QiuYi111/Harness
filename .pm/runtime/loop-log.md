@@ -61,3 +61,12 @@ Append-only log. Each supervisor iteration adds one entry.
 - Iteration valid count: 2
 - Iteration total count: 2
 - Next action: delegate next feasibility task
+
+## Supervisor Delegation 3
+
+- Date: 2026-05-07
+- Phase: waiting_for_worker
+- Branch: codex/dogfood
+- Summary: Wrote third bounded feasibility task for deterministic `pm-next` decision helper
+- Worker mode: sync OpenCode
+- Forbidden scope: pre-existing `scripts/harness_runtime/verify.py` change, `.pm/stable/*`, product boundary changes

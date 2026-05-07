@@ -3,7 +3,7 @@ status: active
 
 current_stage: "feasibility"
 current_stage_goal: "Prove dogfood-grade /goal long-running supervisor loop"
-current_phase: "ready_to_delegate"
+current_phase: "waiting_for_worker"
 loop_iteration: 2
 
 ui_direction_required: false
@@ -54,7 +54,7 @@ worker:
   mode: sync
   current_task_file: .pm/runtime/next-task.md
   current_report_file: .pm/runtime/worker-report.md
-  last_run_id: "8cfc1e6"
+  last_run_id: "pending"
 
 git:
   branch_policy: supervisor_managed
@@ -71,7 +71,7 @@ last_verified:
 
 next_action:
   type: "delegate"
-  summary: "Create next bounded feasibility task toward executable supervisor-loop runtime"
+  summary: "Add deterministic pm-next supervisor decision helper"
   blocked: false
   needs_user_decision: false
 
