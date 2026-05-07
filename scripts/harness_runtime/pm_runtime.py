@@ -690,6 +690,56 @@ def get_loop_summary(project_root: Path) -> dict:
     }
 
 
+def get_failure_breaker_status(project_root: Path) -> dict:
+    """Read-only check of whether the consecutive failure breaker has been triggered.
+
+    Returns dict with: triggered (bool), consecutive_failures (int),
+    max_consecutive_failures (int), reason (str).
+    """
+    state_path = project_root / ".pm" / "runtime" / "state.yaml"
+    if not state_path.exists():
+        return {
+            "triggered": False,
+            "consecutive_failures": 0,
+            "max_consecutive_failures": 0,
+            "reason": "state.yaml unavailable",
+        }
+
+    try:
+        text = state_path.read_text()
+        if not text.strip():
+            return {
+                "triggered": False,
+                "consecutive_failures": 0,
+                "max_consecutive_failures": 0,
+                "reason": "state.yaml unavailable",
+            }
+        raw = yaml.safe_load(text) or {}
+    except (yaml.YAMLError, OSError):
+        return {
+            "triggered": False,
+            "consecutive_failures": 0,
+            "max_consecutive_failures": 0,
+            "reason": "state.yaml unavailable",
+        }
+
+    consecutive = raw.get("consecutive_failures", 0) or 0
+    max_consecutive = raw.get("max_consecutive_failures", 3) or 3
+    triggered = consecutive >= max_consecutive
+
+    if triggered:
+        reason = f"Worker failed {consecutive} consecutive times. Escalating to user."
+    else:
+        reason = "Breaker not triggered."
+
+    return {
+        "triggered": triggered,
+        "consecutive_failures": consecutive,
+        "max_consecutive_failures": max_consecutive,
+        "reason": reason,
+    }
+
+
 def get_pm_status(project_root: Path) -> dict:
     """Collect full PM runtime status for a project.
 
@@ -710,6 +760,8 @@ def get_pm_status(project_root: Path) -> dict:
     git = inspect_git(project_root)
     branch_policy = validate_branch_policy(project_root)
 
+    failure_breaker = get_failure_breaker_status(project_root)
+
     # ok = False only when required files are missing/invalid
     ok = structure["ok"] and state_error is None and loop["valid"]
 
@@ -722,4 +774,5 @@ def get_pm_status(project_root: Path) -> dict:
         "worker_report": report,
         "git": git,
         "branch_policy": branch_policy,
+        "failure_breaker": failure_breaker,
     }

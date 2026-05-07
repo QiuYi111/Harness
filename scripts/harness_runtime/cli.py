@@ -10,7 +10,7 @@ from .verify import run_full_verify, check_role_boundaries
 from .evals import run_eval
 from .context import build_context, format_context, write_context, build_context_cache_aware, format_context_cache_aware
 from .installer import install_skills
-from .pm_runtime import decide_next_action, get_pm_status, get_resume_context, get_branch_correction_plan, get_loop_summary
+from .pm_runtime import decide_next_action, get_failure_breaker_status, get_pm_status, get_resume_context, get_branch_correction_plan, get_loop_summary
 
 DIST_ROOT = Path(__file__).resolve().parent.parent.parent
 RESOURCES_DIR = DIST_ROOT / "references"
@@ -513,6 +513,12 @@ def pm_status(project):
     if bp.get("expected_branch") is not None:
         click.echo(f"  Expected: {bp['expected_branch']}")
     click.echo(f"  {bp.get('reason', '')}")
+
+    fb = status.get("failure_breaker", {})
+    fb_icon = "🚨" if fb.get("triggered") else "✅"
+    click.echo(f"\nFailure breaker: {fb_icon} triggered={fb.get('triggered', False)}")
+    click.echo(f"  Consecutive: {fb.get('consecutive_failures', 0)}/{fb.get('max_consecutive_failures', 3)}")
+    click.echo(f"  {fb.get('reason', '')}")
 
     if not status["ok"]:
         click.echo("\n🚨 PM runtime state is invalid or incomplete.")

@@ -8,6 +8,7 @@ from scripts.harness_runtime.pm_runtime import (
     classify_loop_control,
     decide_next_action,
     get_branch_correction_plan,
+    get_failure_breaker_status,
     get_loop_summary,
     get_pm_status,
     get_resume_context,
@@ -1377,6 +1378,95 @@ class TestGetLoopSummary(unittest.TestCase):
             root = self._make_project(tmp, loop_log=loop_log)
             result = get_loop_summary(root)
             self.assertEqual(result["blockers"], 1)
+
+
+class TestGetFailureBreakerStatus(unittest.TestCase):
+    def _make_project(self, tmp: str, *,
+                      state_yaml: str | None = None) -> Path:
+        root = Path(tmp)
+        files = {}
+        for name in [
+            "product.md", "roadmap.md", "architecture-guardrails.md", "acceptance-rubric.md"
+        ]:
+            files[f".pm/stable/{name}"] = "content"
+        if state_yaml is not None:
+            files[".pm/runtime/state.yaml"] = state_yaml
+        files[".pm/runtime/active-stage.md"] = "stage"
+        files[".pm/runtime/handoff.md"] = "handoff"
+        files[".pm/runtime/loop-control"] = "CONTINUE"
+        files[".pm/runtime/next-task.md"] = "task"
+        _write_tree(root, files)
+        return root
+
+    _STATE_TEMPLATE = textwrap.dedent("""\
+        project_id: "test"
+        current_stage: "feasibility"
+        current_phase: "ready_to_delegate"
+        loop_iteration: 1
+        consecutive_failures: {cf}
+        max_consecutive_failures: {mcf}
+        readiness: {{}}
+        worker: {{engine: opencode, role: intern, mode: sync}}
+        git: {{branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}}
+        next_action: {{type: delegate, summary: x, blocked: false, needs_user_decision: false}}
+        failure_tracking: {{}}
+    """)
+
+    def test_no_failures_not_triggered(self):
+        import tempfile
+
+        state = self._STATE_TEMPLATE.format(cf=0, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            result = get_failure_breaker_status(root)
+            self.assertFalse(result["triggered"])
+            self.assertEqual(result["consecutive_failures"], 0)
+            self.assertEqual(result["max_consecutive_failures"], 3)
+
+    def test_at_max_triggered(self):
+        import tempfile
+
+        state = self._STATE_TEMPLATE.format(cf=3, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            result = get_failure_breaker_status(root)
+            self.assertTrue(result["triggered"])
+            self.assertEqual(result["consecutive_failures"], 3)
+            self.assertIn("3 consecutive times", result["reason"])
+
+    def test_over_max_triggered(self):
+        import tempfile
+
+        state = self._STATE_TEMPLATE.format(cf=5, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            result = get_failure_breaker_status(root)
+            self.assertTrue(result["triggered"])
+            self.assertEqual(result["consecutive_failures"], 5)
+            self.assertIn("5 consecutive times", result["reason"])
+
+    def test_missing_state_not_triggered(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            result = get_failure_breaker_status(root)
+            self.assertFalse(result["triggered"])
+            self.assertIn("unavailable", result["reason"])
+
+    def test_pm_status_includes_breaker(self):
+        import tempfile
+        from unittest.mock import patch
+
+        state = self._STATE_TEMPLATE.format(cf=0, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                        return_value={"branch": "b", "dirty_files": [], "error": None}):
+                status = get_pm_status(root)
+            self.assertIn("failure_breaker", status)
+            self.assertFalse(status["failure_breaker"]["triggered"])
 
 
 if __name__ == "__main__":
