@@ -240,6 +240,40 @@ class TestClassifyLoopControl(unittest.TestCase):
 
 
 class TestValidateWorkerReport(unittest.TestCase):
+    def _complete_report(self) -> str:
+        return textwrap.dedent("""\
+            # Worker Report
+
+            ## Task summary
+            Updated validate_worker_report().
+
+            ## What was done
+            Added required section validation.
+
+            ## Changed files
+            - scripts/harness_runtime/pm_runtime.py
+            - tests/test_pm_runtime.py
+
+            ## Commands run
+            uv run harness pm-status --project /tmp
+
+            ## Test results
+            26 tests passed.
+
+            ## Acceptance criteria
+            - [x] validate_worker_report returns invalid with missing details
+            - [x] placeholder reports not treated as valid
+
+            ## Problems encountered
+            None.
+
+            ## Deviations
+            None.
+
+            ## Evidence
+            All verification commands passed.
+        """)
+
     def test_missing_report(self):
         import tempfile
 
@@ -247,6 +281,7 @@ class TestValidateWorkerReport(unittest.TestCase):
             root = Path(tmp)
             result = validate_worker_report(root)
             self.assertEqual(result["status"], "not_started")
+            self.assertEqual(result["missing_sections"], [])
 
     def test_empty_report(self):
         import tempfile
@@ -257,6 +292,7 @@ class TestValidateWorkerReport(unittest.TestCase):
             (root / ".pm" / "runtime" / "worker-report.md").write_text("")
             result = validate_worker_report(root)
             self.assertEqual(result["status"], "not_started")
+            self.assertEqual(result["missing_sections"], [])
 
     def test_placeholder_report(self):
         import tempfile
@@ -269,8 +305,22 @@ class TestValidateWorkerReport(unittest.TestCase):
             )
             result = validate_worker_report(root)
             self.assertEqual(result["status"], "placeholder")
+            self.assertEqual(result["missing_sections"], [])
 
-    def test_valid_report(self):
+    def test_valid_report_with_all_sections(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            (root / ".pm" / "runtime" / "worker-report.md").write_text(
+                self._complete_report()
+            )
+            result = validate_worker_report(root)
+            self.assertEqual(result["status"], "valid")
+            self.assertEqual(result["missing_sections"], [])
+
+    def test_invalid_report_missing_sections(self):
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -280,9 +330,85 @@ class TestValidateWorkerReport(unittest.TestCase):
                 "# Worker Report\n\n## Objective\nDid the thing.\n\n## Changes\n- foo.py\n"
             )
             result = validate_worker_report(root)
-            self.assertEqual(result["status"], "valid")
+            self.assertEqual(result["status"], "invalid")
+            self.assertIn("Changed files", result["missing_sections"])
+            self.assertIn("Commands run", result["missing_sections"])
+            self.assertIn("Test results", result["missing_sections"])
+            self.assertIn("Acceptance criteria", result["missing_sections"])
+            self.assertIn("Problems encountered", result["missing_sections"])
+            self.assertIn("Deviations", result["missing_sections"])
+            self.assertIn("Evidence", result["missing_sections"])
             self.assertIn("Objective", result["sections"])
             self.assertIn("Changes", result["sections"])
+
+    def test_alternative_heading_names_accepted(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            (root / ".pm" / "runtime" / "worker-report.md").write_text(
+                textwrap.dedent("""\
+                    # Worker Report
+
+                    ## Objective
+                    Did the thing.
+
+                    ## Changes
+                    - foo.py
+
+                    ## Files Changed
+                    - foo.py
+
+                    ## Verification
+                    Ran tests.
+
+                    ## Tests
+                    All pass.
+
+                    ## Acceptance criteria checklist
+                    - [x] Done
+
+                    ## Problems encountered
+                    None.
+
+                    ## Deviations from task
+                    None.
+
+                    ## Evidence
+                    See above.
+                """)
+            )
+            result = validate_worker_report(root)
+            self.assertEqual(result["status"], "valid", result.get("reason"))
+            self.assertEqual(result["missing_sections"], [])
+
+    def test_no_headings_is_not_started(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            (root / ".pm" / "runtime" / "worker-report.md").write_text(
+                "Some plain text without any headings.\n"
+            )
+            result = validate_worker_report(root)
+            self.assertEqual(result["status"], "not_started")
+
+    def test_invalid_report_missing_sections_field_populated(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            (root / ".pm" / "runtime" / "worker-report.md").write_text(
+                "# Worker Report\n\n## Objective\nDid the thing.\n"
+            )
+            result = validate_worker_report(root)
+            self.assertEqual(result["status"], "invalid")
+            self.assertGreater(len(result["missing_sections"]), 0)
+            self.assertIn("reason", result)
+            self.assertIn("missing", result["reason"])
 
 
 class TestGetPmStatus(unittest.TestCase):

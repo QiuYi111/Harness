@@ -490,6 +490,8 @@ def pm_status(project):
 
     wr = status["worker_report"]
     click.echo(f"Worker report: {wr['status']} — {wr['reason']}")
+    if wr.get("missing_sections"):
+        click.echo(f"  Missing: {', '.join(wr['missing_sections'])}")
 
     git = status["git"]
     click.echo(f"\nGit branch: {git['branch'] or 'N/A'}")

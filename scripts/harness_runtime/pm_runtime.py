@@ -34,6 +34,26 @@ LOOP_CONTROL_VALID = {
 
 PLACEHOLDER_REPORT_LINES = {"# Worker Report", "No worker report yet."}
 
+# Each required section maps a canonical name to a list of acceptable
+# heading texts (case-insensitive match).  At least one alternative per
+# group must appear as a markdown heading in the report.
+REQUIRED_REPORT_SECTIONS: list[tuple[str, list[str]]] = [
+    ("Task summary", ["task summary", "objective"]),
+    ("What was done", ["what was done", "changes"]),
+    ("Changed files", ["changed files", "files changed"]),
+    ("Commands run", ["commands run", "verification evidence", "verification"]),
+    ("Test results", ["test results", "tests"]),
+    ("Acceptance criteria", ["acceptance criteria", "acceptance criteria checklist"]),
+    ("Problems encountered", ["problems encountered", "problems"]),
+    ("Deviations", ["deviations", "deviations from task"]),
+    ("Evidence", ["evidence"]),
+]
+
+
+def _section_present(heading: str, alternatives: list[str]) -> bool:
+    low = heading.lower()
+    return any(alt in low for alt in alternatives)
+
 
 def validate_pm_structure(project_root: Path) -> dict:
     """Check that all required .pm/stable and .pm/runtime files exist and are non-empty.
@@ -134,31 +154,47 @@ def classify_loop_control(project_root: Path) -> dict:
 
 
 def validate_worker_report(project_root: Path) -> dict:
-    """Validate .pm/runtime/worker-report.md structure.
+    """Validate .pm/runtime/worker-report.md structure and required sections.
 
-    Placeholder reports are reported as 'not_started', not accepted.
-    Returns dict with: status (not_started|placeholder|valid), sections (list[str]), reason (str).
+    Returns dict with:
+        status (not_started|placeholder|invalid|valid),
+        sections (list[str]),
+        reason (str),
+        missing_sections (list[str], empty unless status is 'invalid').
     """
     report_path = project_root / ".pm" / "runtime" / "worker-report.md"
     if not report_path.exists():
-        return {"status": "not_started", "sections": [], "reason": "worker-report.md does not exist"}
+        return {"status": "not_started", "sections": [], "reason": "worker-report.md does not exist", "missing_sections": []}
 
     content = report_path.read_text()
     if not content.strip():
-        return {"status": "not_started", "sections": [], "reason": "worker-report.md is empty"}
+        return {"status": "not_started", "sections": [], "reason": "worker-report.md is empty", "missing_sections": []}
 
     lines = content.strip().splitlines()
     non_empty = [l.strip() for l in lines if l.strip()]
 
     if set(non_empty) == PLACEHOLDER_REPORT_LINES:
-        return {"status": "placeholder", "sections": [], "reason": "placeholder report, not started"}
+        return {"status": "placeholder", "sections": [], "reason": "placeholder report, not started", "missing_sections": []}
 
     sections = [l.lstrip("# ").strip() for l in lines if l.startswith("#")]
 
     if not sections:
-        return {"status": "not_started", "sections": [], "reason": "no headings found in report"}
+        return {"status": "not_started", "sections": [], "reason": "no headings found in report", "missing_sections": []}
 
-    return {"status": "valid", "sections": sections, "reason": f"{len(sections)} section(s) found"}
+    missing: list[str] = []
+    for canonical_name, alternatives in REQUIRED_REPORT_SECTIONS:
+        if not any(_section_present(s, alternatives) for s in sections):
+            missing.append(canonical_name)
+
+    if missing:
+        return {
+            "status": "invalid",
+            "sections": sections,
+            "reason": f"missing required sections: {', '.join(missing)}",
+            "missing_sections": missing,
+        }
+
+    return {"status": "valid", "sections": sections, "reason": f"{len(sections)} section(s) found", "missing_sections": []}
 
 
 def inspect_git(project_root: Path) -> dict:
