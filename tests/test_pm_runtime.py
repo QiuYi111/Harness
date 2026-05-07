@@ -175,16 +175,38 @@ class TestClassifyLoopControl(unittest.TestCase):
             self.assertTrue(result["valid"])
             self.assertEqual(result["directive"], "STOP")
 
-    def test_user_decision(self):
+    def test_needs_user_decision(self):
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / ".pm" / "runtime").mkdir(parents=True)
-            (root / ".pm" / "runtime" / "loop-control").write_text("USER_DECISION")
+            (root / ".pm" / "runtime" / "loop-control").write_text("NEEDS_USER_DECISION")
             result = classify_loop_control(root)
             self.assertTrue(result["valid"])
-            self.assertEqual(result["directive"], "USER_DECISION")
+            self.assertEqual(result["directive"], "NEEDS_USER_DECISION")
+
+    def test_blocked(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            (root / ".pm" / "runtime" / "loop-control").write_text("BLOCKED")
+            result = classify_loop_control(root)
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["directive"], "BLOCKED")
+
+    def test_stage_exit_reached(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            (root / ".pm" / "runtime" / "loop-control").write_text("STAGE_EXIT_REACHED")
+            result = classify_loop_control(root)
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["directive"], "STAGE_EXIT_REACHED")
 
     def test_unknown_directive(self):
         import tempfile
@@ -195,6 +217,18 @@ class TestClassifyLoopControl(unittest.TestCase):
             (root / ".pm" / "runtime" / "loop-control").write_text("RUN_FOREVER")
             result = classify_loop_control(root)
             self.assertFalse(result["valid"])
+
+    def test_legacy_user_decision_rejected(self):
+        """USER_DECISION is not in the supervisor protocol; must be rejected."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            (root / ".pm" / "runtime" / "loop-control").write_text("USER_DECISION")
+            result = classify_loop_control(root)
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["directive"], "USER_DECISION")
 
     def test_missing_file(self):
         import tempfile

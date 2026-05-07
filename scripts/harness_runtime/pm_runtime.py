@@ -24,7 +24,13 @@ PM_RUNTIME_REQUIRED = [
     "next-task.md",
 ]
 
-LOOP_CONTROL_VALID = {"CONTINUE", "STOP", "USER_DECISION"}
+LOOP_CONTROL_VALID = {
+    "CONTINUE",
+    "STOP",
+    "NEEDS_USER_DECISION",
+    "BLOCKED",
+    "STAGE_EXIT_REACHED",
+}
 
 PLACEHOLDER_REPORT_LINES = {"# Worker Report", "No worker report yet."}
 
@@ -120,7 +126,9 @@ def classify_loop_control(project_root: Path) -> dict:
     descriptions = {
         "CONTINUE": "supervisor should continue delegating",
         "STOP": "supervisor should stop the loop",
-        "USER_DECISION": "supervisor should request user decision",
+        "NEEDS_USER_DECISION": "supervisor should pause for user decision",
+        "BLOCKED": "supervisor is blocked by an unresolved issue",
+        "STAGE_EXIT_REACHED": "stage exit criteria have been met",
     }
     return {"directive": directive, "valid": True, "reason": descriptions[directive]}
 
