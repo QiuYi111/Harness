@@ -122,6 +122,7 @@ def parse_state_yaml(project_root: Path) -> dict:
             "needs_user_decision": raw.get("next_action", {}).get("needs_user_decision"),
         },
         "failure_tracking": raw.get("failure_tracking", {}),
+        "last_review_evidence": raw.get("last_review_evidence"),
         "raw": raw,
     }
 
@@ -446,6 +447,16 @@ def decide_next_action(project_root: Path) -> dict:
             "details": details,
         }
 
+    # ── Review evidence gate ─────────────────────────────────────────────
+    last_review_evidence = state.get("last_review_evidence")
+    loop_iteration = raw.get("loop_iteration", 0) or 0
+    if loop_iteration > 0 and not last_review_evidence:
+        return {
+            "action": "review",
+            "reason": "previous_iteration_lacks_review_evidence",
+            "details": ["last_review_evidence is empty — run independent review before delegating"],
+        }
+
     # ── Loop-control directives ──────────────────────────────────────────
     loop = status["loop_control"]
     directive = loop["directive"]
@@ -606,6 +617,140 @@ def get_resume_context(project_root: Path, log_entries: int = 3) -> dict:
     }
 
 
+def get_loop_summary(project_root: Path) -> dict:
+    """Read-only loop run summary for supervisor audit."""
+    loop_log_path = project_root / ".pm" / "runtime" / "loop-log.md"
+    entries = _parse_loop_log_entries(loop_log_path)
+
+    total_iterations = 0
+    total_reworks = 0
+    last_commit = None
+    delivered = []
+    blockers = 0
+    dates = []
+
+    for entry in entries:
+        lines = entry.splitlines()
+        entry_text = "\n".join(lines)
+
+        if "- Verdict: accepted" in entry_text:
+            total_iterations += 1
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith("- Accepted result:"):
+                    summary = stripped[len("- Accepted result:"):].strip()[:120]
+                    delivered.append(summary)
+                    break
+
+        if "- Phase: needs_rework" in entry_text:
+            total_reworks += 1
+
+        if "Phase: blocked" in entry_text or "action: blocked" in entry_text:
+            blockers += 1
+
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("- Worker commit:") or stripped.startswith("- Worker commits:"):
+                commit_part = stripped.split(":", 1)[1].strip()
+                commits = [c.strip().rstrip(",") for c in commit_part.split(",") if c.strip()]
+                if commits:
+                    last_commit = commits[-1]
+            if stripped.startswith("- Date:"):
+                date_val = stripped[len("- Date:"):].strip()
+                if date_val:
+                    dates.append(date_val)
+
+    valid_rate = None
+    consecutive_failures = 0
+    stage = None
+    iteration_valid_count = 0
+    iteration_total_count = 0
+
+    try:
+        state = parse_state_yaml(project_root)
+        raw = state.get("raw", {})
+        iteration_valid_count = raw.get("raw", {}).get("iteration_valid_count") or 0
+        iteration_total_count = raw.get("raw", {}).get("iteration_total_count") or 0
+        if iteration_total_count > 0:
+            valid_rate = round(iteration_valid_count / iteration_total_count, 2)
+        consecutive_failures = raw.get("consecutive_failures") or 0
+        stage = state.get("stage")
+    except (FileNotFoundError, ValueError):
+        pass
+
+    duration_note = ""
+    if dates:
+        unique = list(dict.fromkeys(dates))
+        if len(unique) == 1:
+            duration_note = unique[0]
+        else:
+            duration_note = f"{unique[0]} → {unique[-1]}"
+
+    return {
+        "total_iterations": total_iterations,
+        "total_reworks": total_reworks,
+        "valid_rate": valid_rate,
+        "iteration_valid_count": iteration_valid_count,
+        "iteration_total_count": iteration_total_count,
+        "consecutive_failures": consecutive_failures,
+        "stage": stage,
+        "last_commit": last_commit,
+        "duration_note": duration_note,
+        "delivered": delivered,
+        "blockers": blockers,
+    }
+
+
+def get_failure_breaker_status(project_root: Path) -> dict:
+    """Read-only check of whether the consecutive failure breaker has been triggered.
+
+    Returns dict with: triggered (bool), consecutive_failures (int),
+    max_consecutive_failures (int), reason (str).
+    """
+    state_path = project_root / ".pm" / "runtime" / "state.yaml"
+    if not state_path.exists():
+        return {
+            "triggered": False,
+            "consecutive_failures": 0,
+            "max_consecutive_failures": 0,
+            "reason": "state.yaml unavailable",
+        }
+
+    try:
+        text = state_path.read_text()
+        if not text.strip():
+            return {
+                "triggered": False,
+                "consecutive_failures": 0,
+                "max_consecutive_failures": 0,
+                "reason": "state.yaml unavailable",
+            }
+        raw = yaml.safe_load(text) or {}
+    except (yaml.YAMLError, OSError):
+        return {
+            "triggered": False,
+            "consecutive_failures": 0,
+            "max_consecutive_failures": 0,
+            "reason": "state.yaml unavailable",
+        }
+
+    consecutive = raw.get("consecutive_failures", 0) or 0
+    max_consecutive = raw.get("max_consecutive_failures", 3) or 3
+    triggered = consecutive >= max_consecutive
+
+    if triggered:
+        reason = f"Worker failed {consecutive} consecutive times. Escalating to user."
+    else:
+        reason = "Breaker not triggered."
+
+    return {
+        "triggered": triggered,
+        "consecutive_failures": consecutive,
+        "max_consecutive_failures": max_consecutive,
+        "reason": reason,
+    }
+
+
 def get_pm_status(project_root: Path) -> dict:
     """Collect full PM runtime status for a project.
 
@@ -626,6 +771,12 @@ def get_pm_status(project_root: Path) -> dict:
     git = inspect_git(project_root)
     branch_policy = validate_branch_policy(project_root)
 
+    failure_breaker = get_failure_breaker_status(project_root)
+
+    review_evidence = None
+    if state:
+        review_evidence = state.get("last_review_evidence")
+
     # ok = False only when required files are missing/invalid
     ok = structure["ok"] and state_error is None and loop["valid"]
 
@@ -638,4 +789,6 @@ def get_pm_status(project_root: Path) -> dict:
         "worker_report": report,
         "git": git,
         "branch_policy": branch_policy,
+        "failure_breaker": failure_breaker,
+        "review_evidence": review_evidence,
     }

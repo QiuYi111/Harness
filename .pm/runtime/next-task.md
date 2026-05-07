@@ -2,18 +2,14 @@
 
 ## Objective
 
-Add a read-only branch correction plan helper so supervisor can recover from branch drift without guessing or mutating git state.
+Add a `get_failure_breaker_status()` read-only helper that checks whether the consecutive failure breaker has been triggered, so `pm-next` and `pm-status` can surface this without the supervisor manually inspecting state.yaml.
 
 ## Stage context
 
-Stage 2: Unbounded `/goal` Dogfood. Dogfood already exposed a real branch drift case: work landed on `main` while the goal branch was `codex/dogfood`. Branch-policy validation now blocks delegation, but it does not yet tell the supervisor whether safe correction is possible or what exact non-destructive command sequence should be used.
+Stage 2: Unbounded `/goal` Dogfood. The safety-mechanisms reference says consecutive_failures >= max_consecutive_failures should trigger a stop, but `pm-next` does not explicitly surface this. The supervisor must currently read state.yaml fields manually. This helper makes the breaker status a first-class check.
 
 ## Read first
 
-- `.pm/stable/roadmap.md`
-- `.pm/runtime/state.yaml`
-- `.pm/runtime/active-stage.md`
-- `.pm/runtime/acceptance-review.md`
 - `scripts/harness_runtime/pm_runtime.py`
 - `scripts/harness_runtime/cli.py`
 - `tests/test_pm_runtime.py`
@@ -21,59 +17,51 @@ Stage 2: Unbounded `/goal` Dogfood. Dogfood already exposed a real branch drift 
 
 ## Task
 
-Implement a read-only branch correction plan:
+1. Add `get_failure_breaker_status(project_root: Path) -> dict` in `pm_runtime.py`:
+   - Reads `consecutive_failures` and `max_consecutive_failures` from state.yaml
+   - Returns: `triggered` (bool), `consecutive_failures` (int), `max_consecutive_failures` (int), `reason` (str)
+   - If triggered is True: reason = "Worker failed {n} consecutive times. Escalating to user."
+   - If state.yaml missing or unreadable: triggered=False, reason="state.yaml unavailable"
 
-1. Add a helper in `scripts/harness_runtime/pm_runtime.py`, for example `get_branch_correction_plan(project_root: Path) -> dict`.
-2. The helper must never mutate git state. It should inspect:
-   - current branch
-   - expected goal branch from `.pm/runtime/state.yaml`
-   - whether the expected branch exists
-   - whether the expected branch is an ancestor of the current branch
-   - whether the current branch is an ancestor of the expected branch
-3. Return one of these statuses:
-   - `ok`: already on expected branch or no goal branch configured
-   - `safe_fast_forward_goal_branch`: current branch contains expected branch history, so supervisor may safely fast-forward the goal branch to current HEAD and switch back
-   - `safe_switch_to_goal_branch`: expected branch contains current branch history, so supervisor may safely switch to expected branch
-   - `manual_review_required`: branches diverged or git state cannot prove safe correction
-   - `unknown`: git/state inspection failed
-4. Include explicit `commands` suggestions for the safe cases, but do not execute them.
-5. Add CLI command `harness pm-branch-plan --project ...` that prints the plan clearly.
-6. Add a Makefile target `pm-branch-plan`.
-7. Add focused tests using mocks/subprocess patching. Do not require creating real git repositories unless that is simpler and deterministic.
+2. Integrate into `decide_next_action()`: add a check AFTER the existing consecutive_failures block. The block already returns `request_user_decision` when the breaker triggers — this is correct. But also integrate into `get_pm_status()` to surface `failure_breaker` in the status dict.
+
+3. Add to `get_pm_status()` return dict: add `failure_breaker` key with the breaker status dict.
+
+4. Update `pm-status` CLI command to print the breaker status line.
+
+5. Add focused tests in `TestGetFailureBreakerStatus`:
+   - `test_no_failures_not_triggered` — consecutive=0, max=3 → not triggered
+   - `test_at_max_triggered` — consecutive=3, max=3 → triggered
+   - `test_over_max_triggered` — consecutive=5, max=3 → triggered
+   - `test_missing_state_not_triggered` — no state.yaml → not triggered
+   - `test_pm_status_includes_breaker` — get_pm_status() includes failure_breaker key
 
 ## Allowed scope
 
 - `scripts/harness_runtime/pm_runtime.py`
 - `scripts/harness_runtime/cli.py`
 - `tests/test_pm_runtime.py`
-- `Makefile`
-- `.pm/runtime/worker-report.md` only to write the final worker report
+- `.pm/runtime/worker-report.md` (final report only)
 
 ## Forbidden scope
 
-- `scripts/harness_runtime/verify.py` because it has pre-existing uncommitted changes outside this task
-- `subskills/opencode-cli/SKILL.md` because it has pre-existing uncommitted changes outside this task
-- `subskills/opencode-cli/references/patterns.md` because it has pre-existing uncommitted changes outside this task
+- `scripts/harness_runtime/verify.py`
+- `subskills/opencode-cli/SKILL.md`
+- `subskills/opencode-cli/references/patterns.md`
 - `.pm/stable/*`
-- Any command that mutates git state (`git switch`, `git branch -f`, `git merge`, `git reset`, `git checkout`, `git commit`, etc.) except the final task commit
-- Product positioning or MVP boundary changes
+- `Makefile` (no changes needed — existing targets sufficient)
+- Any git mutation except the final task commit
 
 ## Acceptance criteria
 
-- [ ] `get_branch_correction_plan()` is read-only and deterministic.
-- [ ] Current branch equals expected branch returns `ok`.
-- [ ] Missing goal branch returns `ok` with no commands.
-- [ ] Expected branch ancestor of current branch returns `safe_fast_forward_goal_branch` with suggested commands.
-- [ ] Current branch ancestor of expected branch returns `safe_switch_to_goal_branch` with suggested commands.
-- [ ] Diverged branches return `manual_review_required` with no mutation commands executed.
-- [ ] `harness pm-branch-plan --project /Users/qiujingyi.7/Harness` runs.
-- [ ] `make pm-branch-plan` runs.
-- [ ] `make verify` passes.
-- [ ] One clear git commit is created for this task only.
-
-## Required Harness process
-
-Risk classify as branch: this touches PM runtime logic, CLI, tests, and Makefile, but must remain read-only. Use TDD-style implementation where practical: tests for branch plan behavior, then implementation, then verification, then report.
+- [ ] `get_failure_breaker_status()` is read-only and deterministic
+- [ ] Returns triggered=True when consecutive >= max
+- [ ] Returns triggered=False when consecutive < max or state unavailable
+- [ ] `get_pm_status()` includes `failure_breaker` key
+- [ ] `pm-status` CLI prints breaker status line
+- [ ] All 5 test cases pass
+- [ ] `make verify` passes
+- [ ] One clear git commit
 
 ## Required verification commands
 
@@ -81,9 +69,6 @@ Risk classify as branch: this touches PM runtime logic, CLI, tests, and Makefile
 make test
 make verify-ai
 make pm-status
-make pm-next
-make pm-resume
-make pm-branch-plan
 make verify
 git status --short
 git log --oneline -1
@@ -92,7 +77,3 @@ git log --oneline -1
 ## Required report file
 
 `.pm/runtime/worker-report.md`
-
-## If blocked
-
-Write a blocker report to `.pm/runtime/blockers.md`. Do not invent product direction or change scope silently. Report exactly what is blocking and why.

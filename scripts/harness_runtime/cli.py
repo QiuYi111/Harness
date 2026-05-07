@@ -10,7 +10,7 @@ from .verify import run_full_verify, check_role_boundaries
 from .evals import run_eval
 from .context import build_context, format_context, write_context, build_context_cache_aware, format_context_cache_aware
 from .installer import install_skills
-from .pm_runtime import decide_next_action, get_pm_status, get_resume_context, get_branch_correction_plan
+from .pm_runtime import decide_next_action, get_failure_breaker_status, get_pm_status, get_resume_context, get_branch_correction_plan, get_loop_summary
 
 DIST_ROOT = Path(__file__).resolve().parent.parent.parent
 RESOURCES_DIR = DIST_ROOT / "references"
@@ -514,6 +514,16 @@ def pm_status(project):
         click.echo(f"  Expected: {bp['expected_branch']}")
     click.echo(f"  {bp.get('reason', '')}")
 
+    fb = status.get("failure_breaker", {})
+    fb_icon = "🚨" if fb.get("triggered") else "✅"
+    click.echo(f"\nFailure breaker: {fb_icon} triggered={fb.get('triggered', False)}")
+    click.echo(f"  Consecutive: {fb.get('consecutive_failures', 0)}/{fb.get('max_consecutive_failures', 3)}")
+    click.echo(f"  {fb.get('reason', '')}")
+
+    re_status = "present" if status.get("review_evidence") else "MISSING"
+    re_icon = "✅" if status.get("review_evidence") else "⚠️ "
+    click.echo(f"\nReview evidence: {re_icon} {re_status}")
+
     if not status["ok"]:
         click.echo("\n🚨 PM runtime state is invalid or incomplete.")
         raise SystemExit(1)
@@ -589,6 +599,35 @@ def pm_resume(project, log_entries):
     for entry in entries:
         first_line = entry.splitlines()[0] if entry else "(empty)"
         click.echo(f"  {first_line}")
+
+
+@main.command("pm-summary")
+@click.option("--project", default=None, help="Project root (default: git root or cwd)")
+def pm_summary(project):
+    """Print a concise audit summary of the entire supervisor loop run."""
+    project_root = Path(project).resolve() if project else _git_root()
+    summary = get_loop_summary(project_root)
+
+    click.echo("=== PM Loop Run Summary ===\n")
+
+    click.echo(f"Stage: {summary['stage'] or 'N/A'}")
+    click.echo(f"Duration: {summary['duration_note'] or 'N/A'}")
+    click.echo(f"Last commit: {summary['last_commit'] or 'N/A'}")
+    click.echo(f"Consecutive failures: {summary['consecutive_failures']}")
+    click.echo(f"Blockers: {summary['blockers']}")
+
+    click.echo(f"\nIterations: {summary['total_iterations']} accepted, {summary['total_reworks']} reworks")
+    if summary['valid_rate'] is not None:
+        click.echo(f"Valid rate: {summary['iteration_valid_count']}/{summary['iteration_total_count']} ({summary['valid_rate']:.0%})")
+    else:
+        click.echo("Valid rate: N/A")
+
+    if summary["delivered"]:
+        click.echo(f"\nDelivered ({len(summary['delivered'])}):")
+        for i, item in enumerate(summary["delivered"], 1):
+            click.echo(f"  {i}. {item}")
+    else:
+        click.echo("\nDelivered: (none)")
 
 
 @main.command("pm-branch-plan")

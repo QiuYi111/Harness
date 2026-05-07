@@ -3,21 +3,28 @@ status: active
 
 current_stage: "delivery"
 current_stage_goal: "Use unbounded /goal dogfood to improve Harness itself"
-current_phase: "worker_running"
-loop_iteration: 6
+current_phase: "ready_to_delegate"
+loop_iteration: 10
 
 ui_direction_required: false
 
 max_iterations: null
 consecutive_failures: 0
 max_consecutive_failures: 3
-iteration_valid_count: 6
-iteration_total_count: 6
+iteration_valid_count: 10
+iteration_total_count: 10
 
 failure_tracking:
   last_failure_signature: null
   last_failure_reason: null
   same_failure_count: 0
+
+last_review_evidence:
+  reviewers: 3
+  verdicts: "scope=FAIL(loop-steps.md touched), tests=PASS, correctness=PASS"
+  commits_reviewed: "ef20835, e5595b0"
+  date: "2026-05-07"
+  note: "scope reviewer caught loop-steps.md in diff — was supervisor's own commit (3414025), not worker's. Worker commit ef20835 was clean."
 
 readiness:
   product_definition_ready: true
@@ -54,7 +61,7 @@ worker:
   mode: sync
   current_task_file: .pm/runtime/next-task.md
   current_report_file: .pm/runtime/worker-report.md
-  last_run_id: "a5d15b5"
+  last_run_id: "e5595b0"
 
 git:
   branch_policy: supervisor_managed
@@ -64,16 +71,16 @@ git:
   auto_push: false
 
 last_verified:
-  commit: "a5d15b5"
-  test_command: "make verify && make pm-next && make pm-resume"
-  test_result: "pass: make verify ok; make pm-next delegate; make pm-resume ok; independent reviewer agents 3/3 pass"
+  commit: "e5595b0"
+  test_command: "make verify"
+  test_result: "pass: 80 tests, pm-status shows failure breaker + review evidence"
   harness_eval_result: unknown
 
 next_action:
   type: "delegate"
-  summary: "Delegate read-only branch correction plan helper"
+  summary: "Select next bounded Harness improvement task"
   blocked: false
   needs_user_decision: false
 
 stop_reason: null
-last_updated: "2026-05-07"
+last_updated: "2026-05-07T10:00"

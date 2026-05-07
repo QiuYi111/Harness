@@ -8,6 +8,8 @@ from scripts.harness_runtime.pm_runtime import (
     classify_loop_control,
     decide_next_action,
     get_branch_correction_plan,
+    get_failure_breaker_status,
+    get_loop_summary,
     get_pm_status,
     get_resume_context,
     inspect_git,
@@ -471,6 +473,11 @@ class TestDecideNextAction(unittest.TestCase):
         git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
         next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
         failure_tracking: {}
+        last_review_evidence:
+          reviewers: 1
+          verdicts: "scope=PASS"
+          commits_reviewed: "abc1234"
+          date: "2026-05-07"
     """)
 
     _COMPLETE_REPORT = textwrap.dedent("""\
@@ -581,6 +588,11 @@ class TestDecideNextAction(unittest.TestCase):
             git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
             next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
             failure_tracking: {}
+            last_review_evidence:
+              reviewers: 1
+              verdicts: "scope=PASS"
+              commits_reviewed: "abc1234"
+              date: "2026-05-07"
         """)
         with tempfile.TemporaryDirectory() as tmp:
             root = self._make_project(tmp, state_yaml=state)
@@ -603,6 +615,11 @@ class TestDecideNextAction(unittest.TestCase):
             git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
             next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
             failure_tracking: {}
+            last_review_evidence:
+              reviewers: 1
+              verdicts: "scope=PASS"
+              commits_reviewed: "abc1234"
+              date: "2026-05-07"
         """)
         with tempfile.TemporaryDirectory() as tmp:
             root = self._make_project(tmp, state_yaml=state)
@@ -624,6 +641,11 @@ class TestDecideNextAction(unittest.TestCase):
             git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
             next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
             failure_tracking: {}
+            last_review_evidence:
+              reviewers: 1
+              verdicts: "scope=PASS"
+              commits_reviewed: "abc1234"
+              date: "2026-05-07"
         """)
         with tempfile.TemporaryDirectory() as tmp:
             root = self._make_project(tmp, state_yaml=state)
@@ -854,6 +876,11 @@ class TestGetResumeContext(unittest.TestCase):
         git: {branch_policy: supervisor_managed, current_goal_branch: "codex/dogfood", auto_merge: false, auto_push: false}
         next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
         failure_tracking: {}
+        last_review_evidence:
+          reviewers: 1
+          verdicts: "scope=PASS"
+          commits_reviewed: "abc1234"
+          date: "2026-05-07"
     """)
 
     _LOOP_LOG = textwrap.dedent("""\
@@ -1223,6 +1250,340 @@ class TestGetBranchCorrectionPlan(unittest.TestCase):
                 p = root / rel
                 current = p.read_text() if p.exists() else None
                 self.assertEqual(current, original, f"{rel} was mutated")
+
+
+class TestGetLoopSummary(unittest.TestCase):
+    def _make_project(self, tmp: str, *,
+                      loop_log: str | None = None,
+                      state_yaml: str | None = None) -> Path:
+        root = Path(tmp)
+        files = {}
+        for name in [
+            "product.md", "roadmap.md", "architecture-guardrails.md", "acceptance-rubric.md"
+        ]:
+            files[f".pm/stable/{name}"] = "content"
+        if state_yaml is not None:
+            files[".pm/runtime/state.yaml"] = state_yaml
+        files[".pm/runtime/active-stage.md"] = "stage"
+        files[".pm/runtime/handoff.md"] = "handoff"
+        files[".pm/runtime/loop-control"] = "CONTINUE"
+        files[".pm/runtime/next-task.md"] = "task"
+        if loop_log is not None:
+            files[".pm/runtime/loop-log.md"] = loop_log
+        _write_tree(root, files)
+        return root
+
+    def test_empty_log_returns_zeros(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp)
+            result = get_loop_summary(root)
+            self.assertEqual(result["total_iterations"], 0)
+            self.assertEqual(result["total_reworks"], 0)
+            self.assertEqual(result["delivered"], [])
+            self.assertEqual(result["blockers"], 0)
+            self.assertIsNone(result["valid_rate"])
+            self.assertIsNone(result["last_commit"])
+
+    def test_single_accepted_iteration(self):
+        import tempfile
+
+        loop_log = textwrap.dedent("""\
+            # Loop Log
+
+            ## Iteration 1
+
+            - Date: 2026-05-07
+            - Phase: waiting_for_worker
+            - Verdict: accepted
+            - Accepted result: Implemented feature X
+        """)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, loop_log=loop_log)
+            result = get_loop_summary(root)
+            self.assertEqual(result["total_iterations"], 1)
+            self.assertEqual(len(result["delivered"]), 1)
+            self.assertIn("Implemented feature X", result["delivered"][0])
+
+    def test_rework_counted(self):
+        import tempfile
+
+        loop_log = textwrap.dedent("""\
+            # Loop Log
+
+            ## Iteration 1
+
+            - Date: 2026-05-07
+            - Phase: needs_rework
+            - Summary: Worker report was incomplete.
+        """)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, loop_log=loop_log)
+            result = get_loop_summary(root)
+            self.assertEqual(result["total_reworks"], 1)
+
+    def test_valid_rate_from_state(self):
+        import tempfile
+
+        state_yaml = textwrap.dedent("""\
+            project_id: "test"
+            current_stage: "feasibility"
+            current_phase: "ready_to_delegate"
+            loop_iteration: 1
+            readiness: {}
+            worker: {engine: opencode, role: intern, mode: sync}
+            git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
+            next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
+            failure_tracking: {}
+            raw:
+              iteration_valid_count: 5
+              iteration_total_count: 5
+        """)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state_yaml)
+            result = get_loop_summary(root)
+            self.assertEqual(result["valid_rate"], 1.0)
+            self.assertEqual(result["iteration_valid_count"], 5)
+            self.assertEqual(result["iteration_total_count"], 5)
+
+    def test_dates_extracted(self):
+        import tempfile
+
+        loop_log = textwrap.dedent("""\
+            # Loop Log
+
+            ## Iteration 1
+
+            - Date: 2026-05-06
+            - Phase: waiting_for_worker
+
+            ## Iteration 2
+
+            - Date: 2026-05-07
+            - Phase: ready_to_delegate
+        """)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, loop_log=loop_log)
+            result = get_loop_summary(root)
+            self.assertIn("→", result["duration_note"])
+            self.assertIn("2026-05-06", result["duration_note"])
+            self.assertIn("2026-05-07", result["duration_note"])
+
+    def test_last_commit_extracted(self):
+        import tempfile
+
+        loop_log = textwrap.dedent("""\
+            # Loop Log
+
+            ## Iteration 1
+
+            - Date: 2026-05-07
+            - Worker commit: abc1234
+            - Phase: waiting_for_worker
+        """)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, loop_log=loop_log)
+            result = get_loop_summary(root)
+            self.assertEqual(result["last_commit"], "abc1234")
+
+    def test_blockers_counted(self):
+        import tempfile
+
+        loop_log = textwrap.dedent("""\
+            # Loop Log
+
+            ## Iteration 1
+
+            - Date: 2026-05-07
+            - Phase: blocked
+            - Summary: Waiting for user input.
+        """)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, loop_log=loop_log)
+            result = get_loop_summary(root)
+            self.assertEqual(result["blockers"], 1)
+
+
+class TestReviewGate(unittest.TestCase):
+
+    _STATE_NO_REVIEW_EVIDENCE = textwrap.dedent("""\
+        project_id: "test"
+        current_stage: "feasibility"
+        current_phase: "ready_to_delegate"
+        loop_iteration: 3
+        consecutive_failures: 0
+        max_consecutive_failures: 3
+        readiness: {}
+        worker: {engine: opencode, role: intern, mode: sync}
+        git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
+        next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
+        failure_tracking: {}
+    """)
+
+    _STATE_WITH_REVIEW_EVIDENCE = textwrap.dedent("""\
+        project_id: "test"
+        current_stage: "feasibility"
+        current_phase: "ready_to_delegate"
+        loop_iteration: 3
+        consecutive_failures: 0
+        max_consecutive_failures: 3
+        readiness: {}
+        worker: {engine: opencode, role: intern, mode: sync}
+        git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
+        next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
+        failure_tracking: {}
+        last_review_evidence:
+          reviewers: 3
+          verdicts: "scope=PASS, tests=PASS"
+          commits_reviewed: "abc1234"
+          date: "2026-05-07"
+    """)
+
+    _STATE_ZERO_ITERATION = textwrap.dedent("""\
+        project_id: "test"
+        current_stage: "feasibility"
+        current_phase: "ready_to_delegate"
+        loop_iteration: 0
+        consecutive_failures: 0
+        max_consecutive_failures: 3
+        readiness: {}
+        worker: {engine: opencode, role: intern, mode: sync}
+        git: {branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}
+        next_action: {type: delegate, summary: x, blocked: false, needs_user_decision: false}
+        failure_tracking: {}
+    """)
+
+    def _make_project(self, tmp: str, *, state_yaml: str) -> Path:
+        root = Path(tmp)
+        files = {}
+        for name in [
+            "product.md", "roadmap.md", "architecture-guardrails.md", "acceptance-rubric.md"
+        ]:
+            files[f".pm/stable/{name}"] = "content"
+        files[".pm/runtime/state.yaml"] = state_yaml
+        files[".pm/runtime/active-stage.md"] = "stage"
+        files[".pm/runtime/handoff.md"] = "handoff"
+        files[".pm/runtime/loop-control"] = "CONTINUE"
+        files[".pm/runtime/next-task.md"] = "task"
+        _write_tree(root, files)
+        return root
+
+    def test_missing_review_evidence_blocks_delegate(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=self._STATE_NO_REVIEW_EVIDENCE)
+            result = decide_next_action(root)
+            self.assertEqual(result["action"], "review")
+            self.assertEqual(result["reason"], "previous_iteration_lacks_review_evidence")
+
+    def test_present_review_evidence_allows_delegate(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=self._STATE_WITH_REVIEW_EVIDENCE)
+            result = decide_next_action(root)
+            self.assertNotEqual(result["reason"], "previous_iteration_lacks_review_evidence")
+            self.assertEqual(result["action"], "delegate")
+
+    def test_zero_iteration_no_gate(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=self._STATE_ZERO_ITERATION)
+            result = decide_next_action(root)
+            self.assertNotEqual(result["reason"], "previous_iteration_lacks_review_evidence")
+            self.assertEqual(result["action"], "delegate")
+
+
+class TestGetFailureBreakerStatus(unittest.TestCase):
+    def _make_project(self, tmp: str, *,
+                      state_yaml: str | None = None) -> Path:
+        root = Path(tmp)
+        files = {}
+        for name in [
+            "product.md", "roadmap.md", "architecture-guardrails.md", "acceptance-rubric.md"
+        ]:
+            files[f".pm/stable/{name}"] = "content"
+        if state_yaml is not None:
+            files[".pm/runtime/state.yaml"] = state_yaml
+        files[".pm/runtime/active-stage.md"] = "stage"
+        files[".pm/runtime/handoff.md"] = "handoff"
+        files[".pm/runtime/loop-control"] = "CONTINUE"
+        files[".pm/runtime/next-task.md"] = "task"
+        _write_tree(root, files)
+        return root
+
+    _STATE_TEMPLATE = textwrap.dedent("""\
+        project_id: "test"
+        current_stage: "feasibility"
+        current_phase: "ready_to_delegate"
+        loop_iteration: 1
+        consecutive_failures: {cf}
+        max_consecutive_failures: {mcf}
+        readiness: {{}}
+        worker: {{engine: opencode, role: intern, mode: sync}}
+        git: {{branch_policy: supervisor_managed, current_goal_branch: "b", auto_merge: false, auto_push: false}}
+        next_action: {{type: delegate, summary: x, blocked: false, needs_user_decision: false}}
+        failure_tracking: {{}}
+    """)
+
+    def test_no_failures_not_triggered(self):
+        import tempfile
+
+        state = self._STATE_TEMPLATE.format(cf=0, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            result = get_failure_breaker_status(root)
+            self.assertFalse(result["triggered"])
+            self.assertEqual(result["consecutive_failures"], 0)
+            self.assertEqual(result["max_consecutive_failures"], 3)
+
+    def test_at_max_triggered(self):
+        import tempfile
+
+        state = self._STATE_TEMPLATE.format(cf=3, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            result = get_failure_breaker_status(root)
+            self.assertTrue(result["triggered"])
+            self.assertEqual(result["consecutive_failures"], 3)
+            self.assertIn("3 consecutive times", result["reason"])
+
+    def test_over_max_triggered(self):
+        import tempfile
+
+        state = self._STATE_TEMPLATE.format(cf=5, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            result = get_failure_breaker_status(root)
+            self.assertTrue(result["triggered"])
+            self.assertEqual(result["consecutive_failures"], 5)
+            self.assertIn("5 consecutive times", result["reason"])
+
+    def test_missing_state_not_triggered(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pm" / "runtime").mkdir(parents=True)
+            result = get_failure_breaker_status(root)
+            self.assertFalse(result["triggered"])
+            self.assertIn("unavailable", result["reason"])
+
+    def test_pm_status_includes_breaker(self):
+        import tempfile
+        from unittest.mock import patch
+
+        state = self._STATE_TEMPLATE.format(cf=0, mcf=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._make_project(tmp, state_yaml=state)
+            with patch("scripts.harness_runtime.pm_runtime.inspect_git",
+                        return_value={"branch": "b", "dirty_files": [], "error": None}):
+                status = get_pm_status(root)
+            self.assertIn("failure_breaker", status)
+            self.assertFalse(status["failure_breaker"]["triggered"])
 
 
 if __name__ == "__main__":

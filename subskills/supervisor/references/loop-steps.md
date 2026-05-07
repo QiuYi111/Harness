@@ -22,14 +22,14 @@ Do NOT read the full codebase. Only read specific code files if a worker report 
 
 Before delegating ANY implementation work, verify:
 
-| Readiness Flag | Required For |
-|---|---|
-| `product_definition_ready` | All work |
-| `roadmap_ready` | All work |
-| `ux_ready` | Product-facing work |
-| `ux_depth` | Product-facing work — `missing`: no UI-facing delivery; `light`: prototypes only, no formal UI implementation; `full`: UI implementation allowed; `not_applicable`: CLI/backend-only |
-| `ui_direction_ready` | UI-facing work |
-| `feasibility_ready` | Delivery loop (Stage 2+) |
+| Readiness Flag               | Required For                                                                                                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product_definition_ready` | All work                                                                                                                                                                                     |
+| `roadmap_ready`            | All work                                                                                                                                                                                     |
+| `ux_ready`                 | Product-facing work                                                                                                                                                                          |
+| `ux_depth`                 | Product-facing work —`missing`: no UI-facing delivery; `light`: prototypes only, no formal UI implementation; `full`: UI implementation allowed; `not_applicable`: CLI/backend-only |
+| `ui_direction_ready`       | UI-facing work                                                                                                                                                                               |
+| `feasibility_ready`        | Delivery loop (Stage 2+)                                                                                                                                                                     |
 
 **If not ready:**
 
@@ -42,15 +42,15 @@ Before delegating ANY implementation work, verify:
 
 Choose exactly ONE next action:
 
-| Action | When |
-|---|---|
-| `grill_product` | Product definition incomplete |
-| `feasibility_spike` | Technical path uncertain |
-| `delegate` | Ready to delegate bounded task |
-| `review` | Worker report exists, needs review |
-| `request_rework` | Worker report rejected, needs rework with specific feedback |
-| `request_user_decision` | Product/MVP/tech/taste/risk decision needed |
-| `stop` | Stage exit reached or stop condition triggered |
+| Action                    | When                                                        |
+| ------------------------- | ----------------------------------------------------------- |
+| `grill_product`         | Product definition incomplete                               |
+| `feasibility_spike`     | Technical path uncertain                                    |
+| `delegate`              | Ready to delegate bounded task                              |
+| `review`                | Worker report exists, needs review                          |
+| `request_rework`        | Worker report rejected, needs rework with specific feedback |
+| `request_user_decision` | Product/MVP/tech/taste/risk decision needed                 |
+| `stop`                  | Stage exit reached or stop condition triggered              |
 
 Only ONE action per iteration. Do not combine.
 
@@ -70,6 +70,7 @@ If action is `delegate` or `feasibility_spike`, write `.pm/runtime/next-task.md`
 8. **Verification commands**: specifies exact commands to run for proof
 
 **For spike tasks:**
+
 - Label the task as `[SPIKE]` in the objective
 - State the technical question
 - Define minimal prototype or experiment
@@ -78,6 +79,7 @@ If action is `delegate` or `feasibility_spike`, write `.pm/runtime/next-task.md`
 - Require `.pm/runtime/spike-report.md` output
 
 **For delivery tasks:**
+
 - Specify `Required Harness process` field in the task packet
 - Include which subskills to use: typically `harness-risk` → `harness-context` → `harness-tdd` → `harness-eval` → `harness-report`
 - For leaf-risk: `harness-tdd` + `harness-report` may suffice
@@ -89,19 +91,54 @@ If action is `delegate` or `feasibility_spike`, write `.pm/runtime/next-task.md`
 
 Read `.pm/runtime/worker-config.yaml` for execution mode. Default is `manual` if file is missing.
 
-For exact CLI syntax, see `subskills/opencode-cli/SKILL.md` and `subskills/opencode-cli/references/patterns.md`.
+### Delegation routing by supervisor environment
+
+The supervisor must detect its runtime environment and choose the correct delegation method:
+
+**If supervisor is OpenCode** (you have the `Task` tool available):
+- Use the **Task tool** with `subagent_type: "general"`.
+- The prompt MUST load the harness-intern skill first via the skill tool, then point to the task file. This ensures the intern gets the full skill definition: role, execution flow, scope guardrails, and report format.
+- Do NOT use `opencode run` — it will fail with "Session not found" because you are already inside an opencode session.
+- Do NOT write raw implementation instructions in the prompt — the skill defines the execution flow.
+- Correct example:
+  ```
+  Task(
+    subagent_type="general",
+    description="Execute harness-intern task",
+    prompt='Load the harness-intern skill using the skill tool with name="harness-intern", then read and execute .pm/runtime/next-task.md exactly. Write .pm/runtime/worker-report.md and create one git commit for your task changes only. Return the worker-report.md content and verification command outputs.'
+  )
+  ```
+  Task(
+    subagent_type="general",
+    description="Execute harness-intern task",
+    prompt="Read .pm/runtime/next-task.md at /path/to/project and execute it exactly. ... [full task instructions] ... Return make test output, make verify output, and git log."
+  )
+  ```
+
+**If supervisor is Codex or Claude Code** :
+
+- Use the **opencode CLI** via shell execution.
+- The canonical method is `opencode serve` for persistent delegation, or `opencode run` for one-shot:
+  ```bash
+  opencode run "/harness-intern Read and execute .pm/runtime/next-task.md exactly. Write .pm/runtime/worker-report.md and create one git commit for your task changes only." --file .pm/runtime/next-task.md
+  ```
+- For exact CLI syntax, see `subskills/opencode-cli/SKILL.md` and `subskills/opencode-cli/references/patterns.md`.
+
+### Execution modes
 
 **manual mode** — Write `.pm/runtime/next-task.md`, then set `current_phase: worker_running` in state.yaml and STOP. The worker is triggered separately. Supervisor will check for the report on the next iteration.
 
-**sync mode** — Execute the worker via the `/harness-intern` slash command (the canonical delegation method):
-```bash
-opencode run "/harness-intern Read and execute .pm/runtime/next-task.md exactly. Write .pm/runtime/worker-report.md and create one git commit for your task changes only." --file .pm/runtime/next-task.md
-```
-This uses the `harness-intern` skill through the OpenCode CLI slash-command interface. Do NOT use `--agent harness-intern` or natural-language role-play like "Act as harness-intern" — the slash command ensures the full skill definition is loaded with correct routing and guardrails.
+**sync mode (OpenCode)** — Delegate via Task tool with `subagent_type: "general"`. Prompt MUST load harness-intern skill via `skill(name="harness-intern")` first. The skill defines role, execution flow, scope guardrails, and report format — do not duplicate these in the prompt. Wait for the task result. On failure, fall back to manual mode.
+
+**sync mode (Codex/Claude Code)** — Execute the worker via the `/harness-intern` slash command using `opencode run`. On failure, fall back to manual mode.
 
 **poll mode** — Write task, set `current_phase: worker_running`. On next iteration, check for worker-report.md. If `timeout_minutes` exceeded, set `NEEDS_USER_DECISION` in loop-control.
 
-**Fallback** — if the slash-command invocation fails, treat as manual mode.
+### Fallback chain
+
+1. Primary delegation method (Task tool or opencode CLI, based on environment)
+2. If primary fails → manual mode (write task, stop, wait for external trigger)
+3. Do NOT implement code directly — this is a protocol violation.
 
 **Critical**: Do NOT assume the worker succeeded. Wait for `.pm/runtime/worker-report.md` to exist and be updated.
 
@@ -119,6 +156,7 @@ Read `.pm/runtime/worker-report.md`.
 - [ ] Deviations from task present
 
 **If report is rejected:**
+
 - Set `next_action.type: request_rework` in acceptance-review.md
 - List specific missing sections
 - Do NOT update loop_iteration until a valid report is reviewed
@@ -129,6 +167,7 @@ Read `.pm/runtime/worker-report.md`.
   - If signature matches previous, increment `same_failure_count`; otherwise reset to 1
 
 **Verification (required for branch+ risk or when worker claims are material; recommended otherwise):**
+
 - Check `git diff --stat` against expectations
 - Run `harness eval` if applicable — the Intern should have run this, but verify independently
 - Run `harness context <feature-id>` to generate minimal context if the task touched multiple files
@@ -136,12 +175,13 @@ Read `.pm/runtime/worker-report.md`.
 - If `harness eval` was run by Intern, read its output and verify the claims
 - If `harness report` was generated, include its summary in the acceptance review
 - **Independent review via `/harness review`**: For branch+ risk or when worker claims are material (e.g., "all tests pass", "no forbidden scope touched"), run an independent OpenCode review agent:
-   ```bash
-   opencode run "/harness review Review the diff on the current branch for safety, scope compliance, and evidence quality." --file .pm/runtime/next-task.md
-   ```
+  ```bash
+  opencode run "/harness review Review the diff on the current branch for safety, scope compliance, and evidence quality." --file .pm/runtime/next-task.md
+  ```
 - **Parallel independent reviewers**: When the review questions are separable (e.g., scope compliance vs test coverage vs security), spawn multiple independent review agents in parallel rather than sequential reviews. Each agent should focus on one concern and produce a focused verdict.
 
 **If report is accepted:**
+
 - **Reset `consecutive_failures` to 0** in state.yaml
 - Increment `iteration_valid_count` if all 3 artifacts (task, report, review) are valid
 
@@ -156,6 +196,7 @@ After writing acceptance review, update ALL of these files:
 5. `.pm/runtime/loop-control` — write one of: CONTINUE, STOP, NEEDS_USER_DECISION, BLOCKED, STAGE_EXIT_REACHED
 
 **State update rules:**
+
 - `loop_iteration` increments ONLY after a completed review (valid report accepted or rejected with rework).
 - `iteration_total_count` increments every iteration.
 - `current_phase` must always reflect the NEXT expected action.
@@ -167,10 +208,10 @@ After writing acceptance review, update ALL of these files:
 
 Write one value to `.pm/runtime/loop-control`:
 
-| Value | When |
-|---|---|
-| `CONTINUE` | Task accepted, next iteration should run |
-| `STOP` | Stage exit reached, unrecoverable error, or iteration limit |
-| `NEEDS_USER_DECISION` | Product/MVP/tech/taste/risk decision required |
-| `BLOCKED` | External blocker that Supervisor cannot resolve |
-| `STAGE_EXIT_REACHED` | Current stage exit criteria met, ready for next stage |
+| Value                   | When                                                        |
+| ----------------------- | ----------------------------------------------------------- |
+| `CONTINUE`            | Task accepted, next iteration should run                    |
+| `STOP`                | Stage exit reached, unrecoverable error, or iteration limit |
+| `NEEDS_USER_DECISION` | Product/MVP/tech/taste/risk decision required               |
+| `BLOCKED`             | External blocker that Supervisor cannot resolve             |
+| `STAGE_EXIT_REACHED`  | Current stage exit criteria met, ready for next stage       |

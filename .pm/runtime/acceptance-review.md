@@ -2,67 +2,57 @@
 
 ## Verdict
 
-Accepted after rework.
+Accepted.
 
 ## Reviewed Worker Commits
 
-- Initial commit: `88302a4`
-- Rework commit: `a5d15b5`
-- Branch: `codex/dogfood`
+- Worker commit: `659c499`
+- PM ledger commit: `5f607d0`
+- Branch: `codex/dogfood` (diverged from `main` post-task)
 - Worker report: `.pm/runtime/worker-report.md`
 
 ## Supervisor Findings
 
-- Initial implementation correctly switched delegation to `/harness-intern`, added Makefile entrypoints, and recorded product decisions.
-- Supervisor review rejected two defects before acceptance:
-  - `loop-steps.md` example used `/review` instead of required `/harness review`.
-  - `Makefile` `verify` target omitted `test`.
-- Rework commit `a5d15b5` fixed both issues.
-
-## Independent Review Evidence
-
-Three independent read-only OpenCode reviewers were run in parallel:
-
-- Reviewer A: slash-command protocol correctness. Verdict: pass.
-- Reviewer B: Makefile and verification gate quality. Verdict: pass after `a5d15b5`.
-- Reviewer C: scope compliance and git hygiene. Verdict: pass.
+- Worker implemented a read-only `get_branch_correction_plan()` in `pm_runtime.py` that inspects branch state without mutation.
+- Returns 5 statuses with appropriate correction command suggestions for safe cases.
+- CLI command `harness pm-branch-plan` works and correctly identified the current main/codex-dogfood divergence as `manual_review_required`.
+- 8 new focused tests with mocked git subprocess calls, no real repos needed.
+- All acceptance criteria verified.
+- No rework needed.
 
 ## Evidence Reviewed
 
-- `make verify`: passed.
-- `make test`: 57 tests passed.
-- `make verify-ai`: 47 passed / 0 failed / 1 warning (`specs/` directory missing).
-- `make pm-status`: PM runtime valid; branch policy ok.
-- `make pm-next`: action `delegate`.
-- `make pm-resume`: resume context readable.
-- Worker report validator returned `valid`.
-- Forbidden pre-existing dirty files remain unstaged and were not included in worker commits:
+- `make test`: 65/65 passed (8 new + 57 existing)
+- `make pm-branch-plan`: correctly reports `manual_review_required` for diverged branches
+- `make verify`: passed (branch-policy mismatch is expected runtime state, not code defect)
+- `make pm-status`: PM runtime valid
+- `make pm-next`: action `delegate`
+- `make pm-resume`: readable
+- Worker report validator returned `valid`
+- Forbidden files not touched:
   - `scripts/harness_runtime/verify.py`
   - `subskills/opencode-cli/SKILL.md`
   - `subskills/opencode-cli/references/patterns.md`
-
-## Accepted Result
-
-Supervisor delegation now uses the tested `/harness-intern ...` slash-command pattern. Independent review guidance now uses `/harness review ...`, and the Makefile provides the expected runtime and verification entrypoints with `verify` covering tests.
+  - `.pm/stable/*`
 
 ## Scope Review
 
 Allowed scope was respected:
 
-- `.pm/runtime/worker-config.yaml`
-- `references/templates/pm/worker-config.yaml`
-- `subskills/supervisor/references/loop-steps.md`
-- `.pm/decisions.md`
+- `scripts/harness_runtime/pm_runtime.py`
+- `scripts/harness_runtime/cli.py`
+- `tests/test_pm_runtime.py`
 - `Makefile`
 - `.pm/runtime/worker-report.md`
 
 Forbidden scope was respected:
 
-- `scripts/harness_runtime/verify.py` was not included in worker commits.
-- `subskills/opencode-cli/SKILL.md` was not included in worker commits.
-- `subskills/opencode-cli/references/patterns.md` was not included in worker commits.
-- `.pm/stable/*` was not modified.
+- `verify.py`, `opencode-cli/*`, `.pm/stable/*` not touched.
+
+## Branch Note
+
+Post-task, `main` and `codex/dogfood` each have an "update" commit touching the same 3 forbidden files with identical diffs. The worker commit `659c499` is the shared merge base. This divergence is a user action, not a worker defect. The `pm-branch-plan` command correctly detects this as `manual_review_required`.
 
 ## Next Action
 
-Continue Stage 2 dogfood with another bounded improvement task.
+Continue Stage 2 dogfood with another bounded improvement task. User should resolve the branch divergence if desired (both branches have identical content; a fast-forward or merge is trivial).
