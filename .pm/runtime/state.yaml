@@ -3,21 +3,21 @@ status: active
 
 current_stage: "feasibility"
 current_stage_goal: "Prove dogfood-grade /goal long-running supervisor loop"
-current_phase: "waiting_for_worker"
-loop_iteration: 0
+current_phase: "ready_to_delegate"
+loop_iteration: 1
 
 ui_direction_required: false
 
 max_iterations: 5
-consecutive_failures: 1
+consecutive_failures: 0
 max_consecutive_failures: 3
-iteration_valid_count: 0
-iteration_total_count: 0
+iteration_valid_count: 1
+iteration_total_count: 1
 
 failure_tracking:
-  last_failure_signature: scope_violation
-  last_failure_reason: "Loop-control classifier did not match supervisor protocol values"
-  same_failure_count: 1
+  last_failure_signature: null
+  last_failure_reason: null
+  same_failure_count: 0
 
 readiness:
   product_definition_ready: true
@@ -54,7 +54,7 @@ worker:
   mode: sync
   current_task_file: .pm/runtime/next-task.md
   current_report_file: .pm/runtime/worker-report.md
-  last_run_id: "6125f40"
+  last_run_id: "07d4af8"
 
 git:
   branch_policy: supervisor_managed
@@ -64,14 +64,14 @@ git:
   auto_push: false
 
 last_verified:
-  commit: null
-  test_command: "uv run harness verify-ai --project /Users/qiujingyi.7/Harness"
-  test_result: "pass: 47 passed, 0 failed, 1 warning"
+  commit: "07d4af8"
+  test_command: "uv run harness pm-status --project /Users/qiujingyi.7/Harness && uv run python -m unittest discover -s tests && uv run harness verify-ai --project /Users/qiujingyi.7/Harness"
+  test_result: "pass: pm-status ok; unittest 21 tests ok; verify-ai 47 passed, 0 failed, 1 warning"
   harness_eval_result: unknown
 
 next_action:
-  type: "request_rework"
-  summary: "Fix loop-control classifier to accept supervisor protocol directives"
+  type: "delegate"
+  summary: "Create next bounded feasibility task for executable supervisor-loop progression"
   blocked: false
   needs_user_decision: false
 
