@@ -11,6 +11,7 @@ from .evals import run_eval
 from .context import build_context, format_context, write_context, build_context_cache_aware, format_context_cache_aware
 from .installer import install_skills
 from .pm_runtime import decide_next_action, get_failure_breaker_status, get_pm_status, get_resume_context, get_branch_correction_plan, get_loop_summary
+from .semantic_atlas import detect_language, resolve_output_path, load_template, assemble_prompt
 
 DIST_ROOT = Path(__file__).resolve().parent.parent.parent
 RESOURCES_DIR = DIST_ROOT / "references"
@@ -650,6 +651,59 @@ def pm_branch_plan(project):
             click.echo(f"  {cmd}")
     else:
         click.echo("\nNo correction commands suggested.")
+
+
+@main.command()
+@click.argument("source", required=True)
+@click.option("--output-dir", default=None, help="Custom output directory (default: docs/semantic_atlas/)")
+@click.option("--strict", is_flag=True, default=False, help="Require all uncertainty labeled")
+@click.option("--diagram-heavy", is_flag=True, default=False, help="Diagrams + tables >= 80% of content")
+@click.option("--verify-mermaid", is_flag=True, default=False, help="Validate Mermaid syntax in output")
+@click.option("--language", default=None, help="Override language detection (python|typescript|cpp|javascript|c|rust|go)")
+def atlas(source, output_dir, strict, diagram_heavy, verify_mermaid, language):
+    """Generate semantic atlas from source code."""
+    src_path = Path(source)
+    if not src_path.exists():
+        click.echo(f"Error: {source} not found.", err=True)
+        raise SystemExit(1)
+    if src_path.is_dir():
+        click.echo("Error: directory input not supported in MVP. Pass a single file.", err=True)
+        raise SystemExit(1)
+
+    try:
+        lang = language or detect_language(src_path)
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"Generating semantic atlas: {src_path.name} ({lang})")
+
+    try:
+        template = load_template()
+    except FileNotFoundError as e:
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(1)
+
+    source_code = src_path.read_text(encoding="utf-8", errors="replace")
+    prompt = assemble_prompt(
+        source_code=source_code,
+        language=lang,
+        template=template,
+        strict=strict,
+        diagram_heavy=diagram_heavy,
+        verify_mermaid=verify_mermaid,
+    )
+
+    out_path = resolve_output_path(src_path, output_dir)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(prompt, encoding="utf-8")
+
+    click.echo(f"Prompt written to: {out_path}")
+    click.echo(f"  Language:  {lang}")
+    click.echo(f"  Strict:    {strict}")
+    click.echo(f"  Diagrams:  {diagram_heavy}")
+    click.echo(f"  Verify:    {verify_mermaid}")
+    click.echo(f"\nFeed this prompt to an LLM to generate the semantic atlas.")
 
 
 if __name__ == "__main__":

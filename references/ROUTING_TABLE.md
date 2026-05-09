@@ -44,6 +44,12 @@ Map user intent to the correct Harness skill.
 
 > **Note on refactor specify**: The specify step for refactors is lightweight. It only requires: (1) scope definition — what files/modules are affected, (2) behavior invariants — what must NOT change, (3) known risk points. A full user-story spec is not required. The spec may be a single section in `specs/<id>/spec.md` labeled `## Refactor Scope`.
 
+## Analysis / Audit
+
+| User Intent | First Skill | Then |
+|---|---|---|
+| "atlas" / "semantic map" / "audit this code" / "代码语义地图" / "语义审计" | harness-atlas | (generates atlas, human reviews) |
+
 ## Review / Status
 
 | User Intent | First Skill | Then |
