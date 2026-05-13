@@ -24,6 +24,9 @@ You are the Harness router. Detect phase, load sub-skill, run CLI gates.
    - **Code audit** ("atlas", "semantic map", "audit this code", "代码语义地图", "语义审计", "帮我搞懂这段代码") → `harness-atlas` immediately — does not require Harness to be installed.
    - **PM loop** ("goal", "supervisor", "advance", "keep going", "PM loop") → `harness-supervisor` — requires `.pm/` directory.
    - **Worker execution** ("execute task", "run next-task.md", "worker") → `harness-intern` — requires `.pm/runtime/next-task.md`.
+   - **Architecture review** ("codebase messy", "complex", "untestable", "hard to navigate", "architecture review") → `harness-architecture-review`.
+   - **Domain language** ("terminology inconsistent", "ubiquitous language", "define domain terms", "naming ambiguity") → `harness-domain-language`.
+   - **Cache optimization** ("reduce token cost", "context too large", "optimize context", "cache") → `harness-cache`.
 2. If no special intent matched, check whether Harness is installed in this repo (look for `.harness/`, `AGENTS.md`, `specs/`).
 3. If not installed and user intent is engineering (implement, debug, refactor), load and execute `harness-init`.
 4. If installed, run `harness status` to see active features and gate status.
@@ -63,7 +66,7 @@ When `harness status` returns output, interpret it as follows:
 4. **Blocked features** — any feature with status `blocked` requires investigation
 5. **Action** — the earliest missing artifact determines the next skill to load (see `PHASE_DETECTION.md`)
 
-If no features are active, report "No active features. Start with `harness-specify` to create a new feature, `harness-grill-product` for product discovery, or `harness-atlas` for code semantic auditing."
+If no features are active, report "No active features. Start with `harness-specify` to create a new feature, `harness-grill-product` for product discovery, `harness-atlas` for code semantic auditing, or `harness-domain-language` to establish project terminology."
 
 ## Stop Conditions
 

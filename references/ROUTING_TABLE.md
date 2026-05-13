@@ -67,10 +67,19 @@ Map user intent to the correct Harness skill.
 | "make a plan" | harness-plan | tasks |
 | "break into tasks" | harness-tasks | risk |
 | "use TDD" | harness-tdd | eval → report |
-| "reduce token cost" | harness-cache | context |
+| "reduce token cost" / "context too large" / "optimize context" | harness-cache | context |
 | "initialize repo" | harness-init | domain-language |
-| "this repo is messy" | harness-architecture-review | domain-language |
+| "this repo is messy" / "codebase feels complex" / "untestable" | harness-architecture-review | domain-language |
 | "rollback this change" | harness-risk | (identify rollback target, verify revert) |
+
+## Domain / Language
+
+| User Intent | First Skill | Then |
+|---|---|---|
+| "terminology is inconsistent" / "agents use different words for the same thing" / "ubiquitous language" | harness-domain-language | (extract/maintain DDD language, write CONTEXT.md + UBIQUITOUS_LANGUAGE.md + ADRs) |
+| "define domain terms" / "resolve naming ambiguity" / "onboard agents to terminology" | harness-domain-language | (resolve synonyms, establish canonical terms) |
+
+> **Note on opencode-cli**: This subskill is an internal reference used by `harness-supervisor` for delegation routing. It is not triggered by user intent directly. Supervisor loads it when determining how to delegate tasks (Task tool vs `opencode run` vs manual mode).
 
 ## How to use this table
 

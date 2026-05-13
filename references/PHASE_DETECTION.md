@@ -68,8 +68,21 @@ Action: use `harness-report`
 
 ## Architecture Review Phase
 
-Signals: user says codebase is messy, large refactor, unclear module boundaries, DDD violation suspected
+Signals:
+- User says codebase is messy, large refactor, unclear module boundaries, DDD violation suspected
+- Keywords: "codebase feels complex", "untestable", "hard to navigate", "architecture review", "shallow modules"
+
 Action: use `harness-architecture-review`
+
+## Domain Language Phase
+
+Signals:
+- User mentions terminology inconsistency, agents using different words for the same thing
+- No `CONTEXT.md` or `UBIQUITOUS_LANGUAGE.md` exists in the project
+- User says "ubiquitous language", "define domain terms", "resolve naming ambiguity", "onboard agents to terminology"
+- New project after `harness-init`, or agents produce inconsistent naming across sessions
+
+Action: use `harness-domain-language`
 
 ## Maintenance Debug Phase
 
@@ -108,8 +121,10 @@ For a given repository:
 3. **Check for PM/product signals** (".pm/", "product idea", "worth building", "goal", "supervisor") -> if `.pm/` exists, check state.yaml for phase; if `.pm/` missing and product keywords present, Product Discovery Phase
 4. **Check for debug signals** (bug keywords, error logs, stack traces, "fix", "broken", "not working") -> if present, Maintenance Debug Phase
 5. **Check for refactor signals** ("refactor", "clean up", "remove dead code", "optimize") -> if present, run `harness-specify` first (lightweight refactor scope), then route to plan → tasks → tdd
-6. Check `specs/` for feature directories -> if none with spec.md, Intake Phase
-7. For each feature, check artifact presence in order: spec -> plan -> tasks -> eval -> report
-8. The earliest missing artifact determines the phase
-9. If all artifacts present and code changes are requested, Implementation Phase
-10. If all artifacts present and user asks about completion, Verification Phase
+6. **Check for domain-language signals** ("terminology inconsistent", "ubiquitous language", "define domain terms", "naming ambiguity") -> if present, Domain Language Phase
+7. **Check for architecture-review signals** ("codebase messy", "complex", "untestable", "hard to navigate", "architecture review") -> if present, Architecture Review Phase
+8. Check `specs/` for feature directories -> if none with spec.md, Intake Phase
+9. For each feature, check artifact presence in order: spec -> plan -> tasks -> eval -> report
+10. The earliest missing artifact determines the phase
+11. If all artifacts present and code changes are requested, Implementation Phase
+12. If all artifacts present and user asks about completion, Verification Phase
