@@ -32,6 +32,18 @@ All notable changes to Harness are documented here.
 - **`harness-maintain-debug`** — Systematic debugging as a tracked maintenance transaction with 3 Iron Laws: no patch without evidence, no close without regression, escalate after 3 failed hypotheses. Full state machine with resumability.
 - Debug record templates: `DEBUG_INDEX_TEMPLATE.md`, `DEBUG_RECORD_TEMPLATE.md`
 
+#### Code Semantic Atlas
+
+- **`harness-atlas`** — Converts source code into structured semantic atlases for human verification without reading source code. Produces 14 sections: dashboard summary, module diagrams, execution flowcharts, data flow diagrams, state machine diagrams, call graphs, state variable tables, function contract tables, side-effect matrices, risk matrices, requirement conformance, coverage matrices, pseudocode, and audit conclusions.
+- **Faithfulness system** — Five absolute prohibitions (no best-practice-as-code, no comment-as-behavior, no fabricated flows, no omitted simple functions, no vague praise). Three-level confidence annotation (confirmed / inferred / unknown). Seven cross-section consistency rules ensuring no contradictions across the 14 sections.
+- **`--strict` mode** — Inferred content banned from Mermaid diagrams (text-only), all unconfirmed behaviors must be annotated, risk recommendations must bind to code evidence.
+- **`--diagram-heavy` mode** — Graphs + tables ≥ 80% of output, natural language minimized.
+- **`--spec <path>`** — Audit against explicit requirement specification for requirement conformance matrix.
+- **Risk catalog** (`references/RISK_CATALOG.md`) — 16 risk categories with detection hints, common scenarios, and suggested tests.
+- **Output template** (`templates/semantic_atlas.md`) — Full 14-section template with placeholder guidance.
+- **Faithfulness rules** (`references/FAITHFULNESS_RULES.md`) — 265-line reference covering confidence classification, absolute prohibitions, graph faithfulness, coverage rules, and strict mode additions.
+- **Language support** — Python, TypeScript/JavaScript, C/C++, Rust, Go with language-specific extraction rules.
+
 #### Cache-Aware Context
 
 - **Cache engineering guide** (`references/CACHE_GUIDE.md`) — Four-layer context ordering (stable → semi-stable → active → dynamic) for prompt cache optimization.
