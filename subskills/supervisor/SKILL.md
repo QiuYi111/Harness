@@ -22,7 +22,7 @@ Each iteration follows exactly these 8 steps, in order:
 2. **CHECK_READINESS** — Verify readiness flags before delegating any implementation work.
 3. **DECIDE** — Choose exactly ONE next action (grill_product, feasibility_spike, delegate, review, request_rework, request_user_decision, stop).
 4. **WRITE_TASK** — Write a bounded, verifiable, scoped task packet to `.pm/runtime/next-task.md`.
-5. **DELEGATE_TO_OPENCODE** — Invoke OpenCode Intern; wait for worker-report.md before proceeding.
+5. **DELEGATE_TO_OPENCODE** — Invoke OpenCode Intern; wait for worker-report.md before proceeding. Using cheap,fast models if available, like deepseek v4 flash or glm-5-turbo.
 6. **REVIEW_REPORT** — Reject if sections missing; verify evidence; accept or request rework.
 7. **UPDATE_STATE** — Update acceptance-review, state.yaml, loop-log, handoff, and loop-control.
 8. **CONTINUE_OR_STOP** — Write loop-control value (CONTINUE | STOP | NEEDS_USER_DECISION | BLOCKED | STAGE_EXIT_REACHED).
